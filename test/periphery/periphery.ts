@@ -991,9 +991,6 @@ describe("Periphery", async () => {
       const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
         fungibleVoltz.address
       );
-      const balanceAfterExecutionUSDC = await token.balanceOf(
-        fungibleVoltz.address
-      );
 
       expect(
         balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)
