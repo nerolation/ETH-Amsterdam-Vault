@@ -39,6 +39,7 @@ const createFixtureLoader = waffle.createFixtureLoader;
 describe("Periphery", async () => {
   let wallet: Wallet, other: Wallet;
   let token: ERC20Mock;
+  let vUSDC: ERC20Mock;
   let mockAToken: MockAToken;
   let vammTest: TestVAMM;
   let marginEngineTest: TestMarginEngine;
@@ -112,8 +113,6 @@ describe("Periphery", async () => {
 
     periphery = (await peripheryFactory.deploy()) as Periphery;
 
-    console.log("periphery address in test", periphery.address);
-
     // set the periphery in the factory
     await expect(factory.setPeriphery(periphery.address))
       .to.emit(factory, "PeripheryUpdate")
@@ -147,14 +146,10 @@ describe("Periphery", async () => {
 
     // Deploy mock vUSDC token
     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
-    const vUSDC = (await ERC20MockFactory.deploy(
+    vUSDC = (await ERC20MockFactory.deploy(
       "voltz USDC",
       "vUSDC"
     )) as ERC20Mock;
-
-    console.log("token.address", token.address);
-    console.log("factory.address", factory.address);
-    console.log("periphery.address", periphery.address);
 
     fungibleVoltz = (await fungibleVoltzFactory.deploy(
       mockAToken.address,
@@ -956,60 +951,111 @@ describe("Periphery", async () => {
   });
 
   describe.only("FungibleVoltz Tests", async () => {
-    it("executes a swap", async () => {
-      await periphery.mintOrBurn({
-        marginEngine: marginEngineTest.address,
-        tickLower: -TICK_SPACING,
-        tickUpper: TICK_SPACING,
-        notional: toBn("100"),
-        isMint: true,
-        marginDelta: toBn("100000"),
+    describe("swap tests", () => {
+      it("executes a swap", async () => {
+        await periphery.mintOrBurn({
+          marginEngine: marginEngineTest.address,
+          tickLower: -TICK_SPACING,
+          tickUpper: TICK_SPACING,
+          notional: toBn("100"),
+          isMint: true,
+          marginDelta: toBn("100000"),
+        });
+
+        await fungibleVoltz.execute();
       });
 
-      await fungibleVoltz.execute();
+      it("executes a swap and settles after maturity", async () => {
+        await periphery.mintOrBurn({
+          marginEngine: marginEngineTest.address,
+          tickLower: -TICK_SPACING,
+          tickUpper: TICK_SPACING,
+          notional: toBn("100"),
+          isMint: true,
+          marginDelta: toBn("100000"),
+        });
+
+        const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
+          fungibleVoltz.address
+        );
+        const balanceBeforeExecutionUSDC = await token.balanceOf(
+          fungibleVoltz.address
+        );
+
+        await fungibleVoltz.execute();
+
+        const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
+          fungibleVoltz.address
+        );
+
+        expect(
+          balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)
+        ).to.equal(toBn("10"));
+
+        await advanceTimeAndBlock(consts.ONE_YEAR, 4);
+
+        await fungibleVoltz.settle();
+
+        const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(
+          fungibleVoltz.address
+        );
+        const balanceAfterSettlementUSDC = await token.balanceOf(
+          fungibleVoltz.address
+        );
+
+        expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
+        expect(balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)).to.be
+          .true;
+      });
     });
 
-    it("executes a swap and settles after maturity", async () => {
-      await periphery.mintOrBurn({
-        marginEngine: marginEngineTest.address,
-        tickLower: -TICK_SPACING,
-        tickUpper: TICK_SPACING,
-        notional: toBn("100"),
-        isMint: true,
-        marginDelta: toBn("100000"),
+    describe("Conversion factor tests", () => {
+      it("calculates conversion factor to be 0 when no vUSDC minted", async () => {
+        expect(await fungibleVoltz.conversionFactor()).to.equal(BigNumber.from(0));
       });
 
-      const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
-        fungibleVoltz.address
-      );
-      const balanceBeforeExecutionUSDC = await token.balanceOf(
-        fungibleVoltz.address
-      );
+      it("calculates conversion factor to be 1 when vUSDC is equal to amount of aUSDC", async () => {
+        await vUSDC.mint(
+          fungibleVoltz.address,
+          toBn("100"),
+        );
 
-      await fungibleVoltz.execute();
+        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn('1'));
 
-      const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
-        fungibleVoltz.address
-      );
+        // Burn again to make test idempotent
+        await vUSDC.burn(
+          fungibleVoltz.address,
+          toBn("100"),
+        );
+      });
 
-      expect(
-        balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)
-      ).to.equal(toBn("10"));
+      it("calculates conversion factor to be 0.5 when vUSDC is equal to double the amount of aUSDC", async () => {
+        await vUSDC.mint(
+          fungibleVoltz.address,
+          toBn("200"),
+        );
 
-      await advanceTimeAndBlock(consts.ONE_YEAR, 4);
+        expect(await fungibleVoltz.conversionFactor()).to.equal(BigNumber.from(toBn('0.5')));
 
-      await fungibleVoltz.settle();
+        await vUSDC.burn(
+          fungibleVoltz.address,
+          toBn("200"),
+        );
+      });
 
-      const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(
-        fungibleVoltz.address
-      );
-      const balanceAfterSettlementUSDC = await token.balanceOf(
-        fungibleVoltz.address
-      );
+      it("calculates conversion factor to be 2 when vUSDC is equal to half the amount of aUSDC", async () => {
+        await vUSDC.mint(
+          fungibleVoltz.address,
+          toBn("50"),
+        );
 
-      expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
-      expect(balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)).to.be
-        .true;
+        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn('2'));
+
+        await vUSDC.burn(
+          fungibleVoltz.address,
+          toBn("50"),
+        );
+      });
     });
   });
 });

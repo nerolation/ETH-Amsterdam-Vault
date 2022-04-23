@@ -44,20 +44,6 @@ contract FungibleVoltz {
         marginEngine = IMarginEngine(_marginEngine);
     }
 
-    function executeMargin() public {
-        variableRateToken.approve(address(periphery), 10 * 1e18);
-        
-        periphery.swap(IPeriphery.SwapPeripheryParams({
-            marginEngine: marginEngine,
-            isFT: true,
-            notional: 10 * 1e18,
-            sqrtPriceLimitX96: MAX_SQRT_RATIO - 1,
-            tickLower: -6000,
-            tickUpper: 0,
-            marginDelta: 1 * 1e18
-        }));
-    }
-
     function execute() public {
         variableRateToken.approve(address(fcm), 10 * 1e18);
 
@@ -68,7 +54,15 @@ contract FungibleVoltz {
         fcm.settleTrader();
     }
 
-    function shareValue() public view returns (uint256) {
-        return (variableRateToken.balanceOf(address(this)) + fixedRateToken.balanceOf(address(this))) / fungibleToken.balanceOf(address(this));
+    // Returns factor in wei format to handle sub 1 numbers. TODO: Consider floating point arithmetic.
+    function conversionFactor() public view returns (uint256) {
+        if (fungibleToken.balanceOf(address(this)) == 0) {
+            return 0;
+        }
+
+        return (
+            (variableRateToken.balanceOf(address(this)) + fixedRateToken.balanceOf(address(this))) * (10 ** fungibleToken.decimals())
+            / fungibleToken.balanceOf(address(this))
+        );
     }
 }
