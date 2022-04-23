@@ -45,6 +45,11 @@ contract FungibleVoltz {
         _;
     }
 
+    modifier canExecute() {
+        require(isAfterCollectionWindow(), "Collection round has not finished");
+        _;
+    }
+
     constructor(
         address _variableRateToken,
         address _fixedRateToken,
@@ -77,7 +82,12 @@ contract FungibleVoltz {
         return block.timestamp >= collectionWindow.start && block.timestamp < collectionWindow.end;
     }
 
-    function execute() public {
+    function isAfterCollectionWindow() internal returns (bool) {
+        // TODO: Also ensure that it's before the start of the next collection window
+        return block.timestamp > collectionWindow.end;
+    }
+
+    function execute() public canExecute {
         variableRateToken.approve(address(fcm), 10 * 1e18);
 
         fcm.initiateFullyCollateralisedFixedTakerSwap(10 * 1e18, MAX_SQRT_RATIO - 1);

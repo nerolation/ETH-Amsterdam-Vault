@@ -954,8 +954,14 @@ describe("Periphery", async () => {
   });
 
   describe.only("FungibleVoltz Tests", async () => {
-    describe("swap tests", () => {
-      it("executes a swap", async () => {
+    describe("Execute tests", () => {
+      it("executes a round", async () => {
+        // advance time by two days
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(2)),
+          4
+        );
+
         await periphery.mintOrBurn({
           marginEngine: marginEngineTest.address,
           tickLower: -TICK_SPACING,
@@ -968,7 +974,30 @@ describe("Periphery", async () => {
         await fungibleVoltz.execute();
       });
 
-      it("executes a swap and settles after maturity", async () => {
+      it("cannot execute a round when collection window has not ended", async () => {
+        await periphery.mintOrBurn({
+          marginEngine: marginEngineTest.address,
+          tickLower: -TICK_SPACING,
+          tickUpper: TICK_SPACING,
+          notional: toBn("100"),
+          isMint: true,
+          marginDelta: toBn("100000"),
+        });
+
+        await expect(fungibleVoltz.execute()).to.be.revertedWith(
+          "Collection round has not finished"
+        );
+      });
+    });
+
+    describe("Settle tests", () => {
+      it("executes a round and settles after maturity", async () => {
+        // advance time by two days
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(2)),
+          4
+        );
+
         await periphery.mintOrBurn({
           marginEngine: marginEngineTest.address,
           tickLower: -TICK_SPACING,
