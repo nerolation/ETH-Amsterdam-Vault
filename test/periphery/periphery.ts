@@ -10,6 +10,9 @@ import {
   TestMarginEngine,
   TestVAMM,
   FungibleVoltz,
+  AaveFCM,
+  MockAToken,
+  MockAaveLendingPool,
 } from "../../typechain";
 import {
   APY_UPPER_MULTIPLIER,
@@ -28,17 +31,22 @@ import {
 } from "../shared/utilities";
 import { TickMath } from "../shared/tickMath";
 import { mul } from "../shared/functions";
+import {advanceTimeAndBlock} from "../helpers/time";
+import {consts} from "../helpers/constants";
 
 const createFixtureLoader = waffle.createFixtureLoader;
 
 describe("Periphery", async () => {
   let wallet: Wallet, other: Wallet;
   let token: ERC20Mock;
+  let mockAToken: MockAToken;
   let vammTest: TestVAMM;
   let marginEngineTest: TestMarginEngine;
   let periphery: Periphery;
   let factory: Factory;
   let fungibleVoltz: FungibleVoltz;
+  let fcmTest: AaveFCM;
+  let aaveLendingPool: MockAaveLendingPool;
 
   let loadFixture: ReturnType<typeof createFixtureLoader>;
 
@@ -48,7 +56,7 @@ describe("Periphery", async () => {
   });
 
   beforeEach("deploy fixture", async () => {
-    ({ token, vammTest, marginEngineTest, factory } = await loadFixture(
+    ({ token, vammTest, marginEngineTest, factory, fcmTest, mockAToken, aaveLendingPool } = await loadFixture(
       metaFixture
     ));
 
@@ -117,6 +125,18 @@ describe("Periphery", async () => {
 
     // Deploy FungibleVoltz contract
 
+    await token.mint(other.address, BigNumber.from(10).pow(27));
+    await token
+      .connect(other)
+      .approve(marginEngineTest.address, BigNumber.from(10).pow(27));
+
+    // mint underlyings to the mock aToken
+    await token.mint(mockAToken.address, BigNumber.from(10).pow(27));
+    const currentReserveNormalisedIncome =
+      await aaveLendingPool.getReserveNormalizedIncome(token.address);
+
+    // await token.mint(fungibleVoltz.address, BigNumber.from(10).pow(27).mul(2));
+
     const fungibleVoltzFactory = await ethers.getContractFactory(
       "FungibleVoltz"
     );
@@ -126,15 +146,20 @@ describe("Periphery", async () => {
     console.log("periphery.address", periphery.address);
 
     fungibleVoltz = (await fungibleVoltzFactory.deploy(
-      token.address,
+      mockAToken.address,
       factory.address,
-      periphery.address,
+      fcmTest.address,
       marginEngineTest.address
     )) as FungibleVoltz;
 
     await fungibleVoltz.deployed();
 
-    await token.mint(fungibleVoltz.address, BigNumber.from(10).pow(27).mul(2));
+    // mint aTokens
+    await mockAToken.mint(
+      fungibleVoltz.address,
+      toBn("100"),
+      currentReserveNormalisedIncome
+    );
   });
 
   it("set lp notional cap works as expected with margin engine owner", async () => {
@@ -951,7 +976,15 @@ describe("Periphery", async () => {
 
       // await vammTest.initializeVAMM(encodeSqrtRatioX96(1, 1).toString());
 
+      const underlyingYieldBearingToken = await fcmTest.underlyingYieldBearingToken();
+
+      console.log('underlyingYieldBearingToken', underlyingYieldBearingToken);
+
       await fungibleVoltz.execute();
+
+      await advanceTimeAndBlock(consts.ONE_YEAR, 4);
+
+      // aait fcmTest.settleTrader();
     });
   });
 });

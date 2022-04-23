@@ -4,6 +4,7 @@ import "./interfaces/IPeriphery.sol";
 import "./interfaces/IFactory.sol";
 import "./interfaces/IMarginEngine.sol";
 import "./interfaces/IERC20Minimal.sol";
+import "./interfaces/fcms/IFCM.sol";
 import "./interfaces/rate_oracles/IRateOracle.sol";
 import "hardhat/console.sol";
 
@@ -15,11 +16,18 @@ contract FungibleVoltz {
     IFactory factory;
     IPeriphery periphery;
     IMarginEngine marginEngine;
+    IFCM fcm;
 
-    constructor(address _underlying, address _factory, address _periphery, address _marginEngine) {
+    constructor(
+        address _underlying,
+        address _factory,
+        address _fcm,
+        address _marginEngine
+    ) {
         underlying = IERC20Minimal(_underlying);
         factory = IFactory(_factory);
-        periphery = IPeriphery(_periphery);
+        periphery = IPeriphery(factory.periphery());
+        fcm = IFCM(_fcm);
         marginEngine = IMarginEngine(_marginEngine);
     }
 
@@ -42,15 +50,9 @@ contract FungibleVoltz {
     //     }));
     // }
 
-    function execute() public {
+    function executeMargin() public {
         underlying.approve(address(periphery), 10 * 1e18);
         
-        if (periphery.getCurrentTick(marginEngine) < 0) {
-            console.log("-", uint24(-periphery.getCurrentTick(marginEngine)));
-        } else {
-            console.log(uint24(periphery.getCurrentTick(marginEngine)));
-        }
-
         periphery.swap(IPeriphery.SwapPeripheryParams({
             marginEngine: marginEngine,
             isFT: true,
@@ -60,5 +62,17 @@ contract FungibleVoltz {
             tickUpper: 0,
             marginDelta: 1 * 1e18
         }));
+    }
+
+    function execute() public {
+        underlying.approve(address(fcm), 10 * 1e18);
+
+        console.log(underlying.balanceOf(address(this)));
+
+        fcm.initiateFullyCollateralisedFixedTakerSwap(10 * 1e18, MAX_SQRT_RATIO - 1);
+    }
+
+    function settle() public {
+        fcm.settleTrader();
     }
 }

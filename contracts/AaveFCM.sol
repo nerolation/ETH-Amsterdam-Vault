@@ -22,6 +22,7 @@ import "./aave/AaveDataTypes.sol";
 import "./core_libraries/SafeTransferLib.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "hardhat/console.sol";
 
 contract AaveFCM is AaveFCMStorage, IFCM, IAaveFCM, Initializable, OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeable {
 
@@ -134,11 +135,17 @@ contract AaveFCM is AaveFCMStorage, IFCM, IAaveFCM, Initializable, OwnableUpgrad
     // update trader fixed and variable token balances
     trader.updateBalancesViaDeltas(fixedTokenDelta, variableTokenDelta);
 
+    console.log("transfer underlying yield bearing token");
+
     // deposit notional executed in terms of aTokens (e.g. aUSDC) to fully collateralise your position
     _underlyingYieldBearingToken.safeTransferFrom(msg.sender, address(this), uint256(-variableTokenDelta));
 
+    console.log("transfer yield bearing token");
+
     // transfer fees to the margin engine (in terms of the underlyingToken e.g. USDC)
     underlyingToken.safeTransferFrom(msg.sender, address(_marginEngine), cumulativeFeeIncurred);
+
+    console.log("after transfer yield bearing token");
 
     emit FullyCollateralisedSwap(
       msg.sender,
@@ -192,10 +199,14 @@ contract AaveFCM is AaveFCMStorage, IFCM, IAaveFCM, Initializable, OwnableUpgrad
 
     require(trader.variableTokenBalance <= 0, "Trader VT balance positive");
 
+    console.log('a');
+
     /// @dev it is impossible to unwind more variable token exposure than the user already has
     /// @dev hencel, the notionalToUnwind needs to be <= absolute value of the variable token balance of the trader
     /// @audit-casting variableTokenDelta is expected to be negative here, but what if goes above 0 due to rounding imprecision?
     require(uint256(-trader.variableTokenBalance) >= notionalToUnwind, "notional to unwind > notional");
+
+    console.log('b');
 
     // initiate a swap
     /// @dev as convention, specify the tickLower to be equal to -tickSpacing and tickUpper to be equal to tickSpacing
@@ -208,9 +219,13 @@ contract AaveFCM is AaveFCMStorage, IFCM, IAaveFCM, Initializable, OwnableUpgrad
         tickUpper: tickSpacing
     });
 
+    console.log('c');
+
     (fixedTokenDelta, variableTokenDelta, cumulativeFeeIncurred, fixedTokenDeltaUnbalanced,) = _vamm.swap(params);
 
     require(variableTokenDelta >= 0, "VT delta negative");
+
+    console.log('d');
 
     // update trader fixed and variable token balances
     (int256 _fixedTokenBalance, int256 _variableTokenBalance) = trader.updateBalancesViaDeltas(fixedTokenDelta, variableTokenDelta);
@@ -224,12 +239,16 @@ contract AaveFCM is AaveFCMStorage, IFCM, IAaveFCM, Initializable, OwnableUpgrad
     // check the margin requirement of the trader post unwind, if the current balances still support the unwind, they it can happen, otherwise the unwind will get reverted
     checkMarginRequirement(_fixedTokenBalance, _variableTokenBalance, trader.marginInScaledYieldBearingTokens);
 
+    console.log("before underlying token");
     // transfer fees to the margin engine
     underlyingToken.safeTransferFrom(msg.sender, address(_marginEngine), cumulativeFeeIncurred);
 
+    console.log("before underlying yield bearing token");
     // transfer the yield bearing tokens to trader address and update margin in terms of yield bearing tokens
     // variable token delta should be positive
     _underlyingYieldBearingToken.safeTransfer(msg.sender, uint256(variableTokenDelta));
+
+    console.log("after");
 
     emit FullyCollateralisedUnwind(
       msg.sender,
