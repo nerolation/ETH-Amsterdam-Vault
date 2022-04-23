@@ -989,15 +989,6 @@ describe("Periphery", async () => {
         fungibleVoltz.address
       );
 
-      console.log(
-        "balanceBeforeExecutionAUSDC",
-        balanceBeforeExecutionAUSDC.toString()
-      );
-      console.log(
-        "balanceBeforeExecutionUSDC",
-        balanceBeforeExecutionUSDC.toString()
-      );
-
       await fungibleVoltz.execute();
 
       const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
@@ -1005,15 +996,6 @@ describe("Periphery", async () => {
       );
       const balanceAfterExecutionUSDC = await token.balanceOf(
         fungibleVoltz.address
-      );
-
-      console.log(
-        "balanceAfterExecutionAUSDC",
-        balanceAfterExecutionAUSDC.toString()
-      );
-      console.log(
-        "balanceAfterExecutionUSDC",
-        balanceAfterExecutionUSDC.toString()
       );
 
       expect(
@@ -1031,17 +1013,8 @@ describe("Periphery", async () => {
         fungibleVoltz.address
       );
 
-      // expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
-      // expect(balanceAfterSettlementUSDC).to.be.greaterThan(balanceAfterSettlementUSDC);
-
-      console.log(
-        "balanceAfterSettlementAUSDC",
-        balanceAfterSettlementAUSDC.toString()
-      );
-      console.log(
-        "balanceAfterSettlementUSDC",
-        balanceAfterSettlementUSDC.toString()
-      );
+      expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
+      expect(balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)).to.be.true;
     });
   });
 });
