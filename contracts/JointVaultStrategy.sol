@@ -8,7 +8,7 @@ import "./interfaces/fcms/IFCM.sol";
 import "./interfaces/rate_oracles/IRateOracle.sol";
 import "hardhat/console.sol";
 
-contract FungibleVoltz {
+contract JointVaultStrategy {
     //
     // Constants
     //
@@ -21,8 +21,8 @@ contract FungibleVoltz {
     //
 
     IERC20Minimal variableRateToken; // AUSDC
-    IERC20Minimal fixedRateToken; // USDC
-    IERC20Minimal fungibleToken; // vUSDC
+    IERC20Minimal underlyingToken; // USDC
+    IERC20Minimal jvUSDC; // jvUSDC
 
     //
     // Voltz contracts
@@ -77,8 +77,8 @@ contract FungibleVoltz {
 
     constructor(
         address _variableRateToken,
-        address _fixedRateToken,
-        address _fungibleToken,
+        address _underlyingToken,
+        address _jvUSDC,
         address _factory,
         address _fcm,
         address _marginEngine,
@@ -86,8 +86,8 @@ contract FungibleVoltz {
     ) {
         // Token contracts
         variableRateToken = IERC20Minimal(_variableRateToken);
-        fixedRateToken = IERC20Minimal(_fixedRateToken);
-        fungibleToken = IERC20Minimal(_fungibleToken);
+        underlyingToken = IERC20Minimal(_underlyingToken);
+        jvUSDC = IERC20Minimal(_jvUSDC);
 
         // Voltz contracts
         factory = IFactory(_factory);
@@ -126,13 +126,13 @@ contract FungibleVoltz {
 
     // Returns factor in wei format to handle sub 1 numbers. TODO: Consider floating point arithmetic.
     function conversionFactor() public view returns (uint256) {
-        if (fungibleToken.balanceOf(address(this)) == 0) {
+        if (jvUSDC.balanceOf(address(this)) == 0) {
             return 0;
         }
 
         return (
-            (variableRateToken.balanceOf(address(this)) + fixedRateToken.balanceOf(address(this))) * (10 ** fungibleToken.decimals())
-            / fungibleToken.balanceOf(address(this))
+            (variableRateToken.balanceOf(address(this)) + underlyingToken.balanceOf(address(this))) * (10 ** jvUSDC.decimals())
+            / jvUSDC.balanceOf(address(this))
         );
     }
 

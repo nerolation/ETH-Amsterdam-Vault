@@ -9,7 +9,7 @@ import {
   Periphery,
   TestMarginEngine,
   TestVAMM,
-  FungibleVoltz,
+  JointVaultStrategy,
   AaveFCM,
   MockAToken,
   MockAaveLendingPool,
@@ -39,13 +39,13 @@ const createFixtureLoader = waffle.createFixtureLoader;
 describe("Periphery", async () => {
   let wallet: Wallet, other: Wallet;
   let token: ERC20Mock;
-  let vUSDC: ERC20Mock;
+  let jvUSDC: ERC20Mock;
   let mockAToken: MockAToken;
   let vammTest: TestVAMM;
   let marginEngineTest: TestMarginEngine;
   let periphery: Periphery;
   let factory: Factory;
-  let fungibleVoltz: FungibleVoltz;
+  let jointVault: JointVaultStrategy;
   let fcmTest: AaveFCM;
   let aaveLendingPool: MockAaveLendingPool;
 
@@ -128,7 +128,7 @@ describe("Periphery", async () => {
       .connect(other)
       .approve(periphery.address, BigNumber.from(10).pow(27));
 
-    // Deploy FungibleVoltz contract
+    // Deploy JointVaultStrategy contract
 
     await token.mint(other.address, BigNumber.from(10).pow(27));
     await token
@@ -140,20 +140,23 @@ describe("Periphery", async () => {
     const currentReserveNormalisedIncome =
       await aaveLendingPool.getReserveNormalizedIncome(token.address);
 
-    const fungibleVoltzFactory = await ethers.getContractFactory(
-      "FungibleVoltz"
+    const jointVaultFactory = await ethers.getContractFactory(
+      "JointVaultStrategy"
     );
 
-    // Deploy mock vUSDC token
+    // Deploy mock jvUSDC token
     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
-    vUSDC = (await ERC20MockFactory.deploy("voltz USDC", "vUSDC")) as ERC20Mock;
+    jvUSDC = (await ERC20MockFactory.deploy(
+      "voltz USDC",
+      "jvUSDC"
+    )) as ERC20Mock;
 
     const currentTimestamp = await getCurrentTimestamp();
 
-    fungibleVoltz = (await fungibleVoltzFactory.deploy(
+    jointVault = (await jointVaultFactory.deploy(
       mockAToken.address,
       token.address,
-      vUSDC.address,
+      jvUSDC.address,
       factory.address,
       fcmTest.address,
       marginEngineTest.address,
@@ -161,13 +164,13 @@ describe("Periphery", async () => {
         start: currentTimestamp,
         end: currentTimestamp + 86400, // one day later
       }
-    )) as FungibleVoltz;
+    )) as JointVaultStrategy;
 
-    await fungibleVoltz.deployed();
+    await jointVault.deployed();
 
     // mint aTokens
     await mockAToken.mint(
-      fungibleVoltz.address,
+      jointVault.address,
       toBn("100"),
       currentReserveNormalisedIncome
     );
@@ -953,7 +956,7 @@ describe("Periphery", async () => {
     );
   });
 
-  describe.only("FungibleVoltz Tests", async () => {
+  describe.only("JointVaultStrategy Tests", async () => {
     describe("Execute tests", () => {
       it("executes a round", async () => {
         // advance time by two days
@@ -971,7 +974,7 @@ describe("Periphery", async () => {
           marginDelta: toBn("100000"),
         });
 
-        await fungibleVoltz.execute();
+        await jointVault.execute();
       });
 
       it("cannot execute a round when collection window has not ended", async () => {
@@ -984,7 +987,7 @@ describe("Periphery", async () => {
           marginDelta: toBn("100000"),
         });
 
-        await expect(fungibleVoltz.execute()).to.be.revertedWith(
+        await expect(jointVault.execute()).to.be.revertedWith(
           "Collection round has not finished"
         );
       });
@@ -1011,18 +1014,16 @@ describe("Periphery", async () => {
         });
 
         balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
-          fungibleVoltz.address
+          jointVault.address
         );
-        balanceBeforeExecutionUSDC = await token.balanceOf(
-          fungibleVoltz.address
-        );
+        balanceBeforeExecutionUSDC = await token.balanceOf(jointVault.address);
 
-        await fungibleVoltz.execute();
+        await jointVault.execute();
       });
 
       it("settles after maturity", async () => {
         const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
-          fungibleVoltz.address
+          jointVault.address
         );
 
         expect(
@@ -1035,13 +1036,13 @@ describe("Periphery", async () => {
         // Advance by one year to generate a good amount of yield
         await advanceTimeAndBlock(consts.ONE_YEAR, 4);
 
-        await fungibleVoltz.settle();
+        await jointVault.settle();
 
         const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(
-          fungibleVoltz.address
+          jointVault.address
         );
         const balanceAfterSettlementUSDC = await token.balanceOf(
-          fungibleVoltz.address
+          jointVault.address
         );
 
         expect(balanceAfterSettlementAUSDC).to.equal(
@@ -1054,7 +1055,7 @@ describe("Periphery", async () => {
 
       it("canot settle before termEnd", async () => {
         const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
-          fungibleVoltz.address
+          jointVault.address
         );
 
         expect(
@@ -1064,7 +1065,7 @@ describe("Periphery", async () => {
         // 5 days minimum need to pass until maturity as configured by test suite
         await advanceTimeAndBlock(consts.ONE_DAY.mul(BigNumber.from(4)), 4);
 
-        await expect(fungibleVoltz.settle()).to.be.revertedWith(
+        await expect(jointVault.settle()).to.be.revertedWith(
           "Not past term end"
         );
       });
@@ -1072,7 +1073,7 @@ describe("Periphery", async () => {
 
     describe("Deposit tests", () => {
       it("can execute a deposit when in collection window", async () => {
-        await expect(fungibleVoltz.deposit()).to.not.be.reverted;
+        await expect(jointVault.deposit()).to.not.be.reverted;
       });
 
       it("cannot execute a deposit when not in collection window", async () => {
@@ -1081,7 +1082,7 @@ describe("Periphery", async () => {
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(fungibleVoltz.deposit()).to.be.revertedWith(
+        await expect(jointVault.deposit()).to.be.revertedWith(
           "Collection window not open"
         );
       });
@@ -1089,7 +1090,7 @@ describe("Periphery", async () => {
 
     describe("Withdraw tests", () => {
       it("can execute a withdraw when in collection window", async () => {
-        await expect(fungibleVoltz.withdraw()).to.not.be.reverted;
+        await expect(jointVault.withdraw()).to.not.be.reverted;
       });
 
       it("cannot execute a withdraw when not in collection window", async () => {
@@ -1098,46 +1099,44 @@ describe("Periphery", async () => {
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(fungibleVoltz.withdraw()).to.be.revertedWith(
+        await expect(jointVault.withdraw()).to.be.revertedWith(
           "Collection window not open"
         );
       });
     });
 
     describe("Conversion factor tests", () => {
-      it("calculates conversion factor to be 0 when no vUSDC minted", async () => {
-        expect(await fungibleVoltz.conversionFactor()).to.equal(
-          BigNumber.from(0)
-        );
+      it("calculates conversion factor to be 0 when no jvUSDC minted", async () => {
+        expect(await jointVault.conversionFactor()).to.equal(BigNumber.from(0));
       });
 
-      it("calculates conversion factor to be 1 when vUSDC is equal to amount of aUSDC", async () => {
-        await vUSDC.mint(fungibleVoltz.address, toBn("100"));
+      it("calculates conversion factor to be 1 when jvUSDC is equal to amount of aUSDC", async () => {
+        await jvUSDC.mint(jointVault.address, toBn("100"));
 
-        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn("1"));
+        expect(await jointVault.conversionFactor()).to.equal(toBn("1"));
 
         // Burn again to make test idempotent
-        await vUSDC.burn(fungibleVoltz.address, toBn("100"));
+        await jvUSDC.burn(jointVault.address, toBn("100"));
       });
 
-      it("calculates conversion factor to be 0.5 when vUSDC is equal to double the amount of aUSDC", async () => {
-        await vUSDC.mint(fungibleVoltz.address, toBn("200"));
+      it("calculates conversion factor to be 0.5 when jvUSDC is equal to double the amount of aUSDC", async () => {
+        await jvUSDC.mint(jointVault.address, toBn("200"));
 
-        expect(await fungibleVoltz.conversionFactor()).to.equal(
+        expect(await jointVault.conversionFactor()).to.equal(
           BigNumber.from(toBn("0.5"))
         );
 
         // Burn again to make test idempotent
-        await vUSDC.burn(fungibleVoltz.address, toBn("200"));
+        await jvUSDC.burn(jointVault.address, toBn("200"));
       });
 
-      it("calculates conversion factor to be 2 when vUSDC is equal to half the amount of aUSDC", async () => {
-        await vUSDC.mint(fungibleVoltz.address, toBn("50"));
+      it("calculates conversion factor to be 2 when jvUSDC is equal to half the amount of aUSDC", async () => {
+        await jvUSDC.mint(jointVault.address, toBn("50"));
 
-        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn("2"));
+        expect(await jointVault.conversionFactor()).to.equal(toBn("2"));
 
         // Burn again to make test idempotent
-        await vUSDC.burn(fungibleVoltz.address, toBn("50"));
+        await jvUSDC.burn(jointVault.address, toBn("50"));
       });
     });
   });
