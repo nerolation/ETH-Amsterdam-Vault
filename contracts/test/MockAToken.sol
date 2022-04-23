@@ -115,10 +115,7 @@ contract MockAToken is IAToken, ERC20 {
     /**
      * @dev burn function for development
      **/
-    function cheatBurn(
-        address account,
-        uint256 amount
-    ) external {
+    function cheatBurn(address account, uint256 amount) external {
         _burn(account, amount);
     }
 

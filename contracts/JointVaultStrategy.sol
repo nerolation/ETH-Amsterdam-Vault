@@ -5,37 +5,11 @@ import "./interfaces/IFactory.sol";
 import "./interfaces/IMarginEngine.sol";
 import "./interfaces/fcms/IFCM.sol";
 import "./interfaces/rate_oracles/IRateOracle.sol";
+import "./interfaces/IAAVE.sol";
+import "./VoltzUSDC.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
-
-interface IAAVE {
-    function deposit(
-        address asset,
-        uint256 amount,
-        address onBehalfOf,
-        uint16 referralCode
-    ) external;
-
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256);
-}
-
-contract VoltzUSDC is ERC20, Ownable {
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
-
-    function adminMint(address to, uint amount) external onlyOwner {
-        _mint(to, amount);
-    }
-
-    function adminBurn(address from, uint amount) external onlyOwner {
-        _burn(from, amount);
-    }
-}
 
 contract JointVaultStrategy {
     //
@@ -51,8 +25,7 @@ contract JointVaultStrategy {
 
     IERC20 public variableRateToken; // AUSDC
     IERC20 public underlyingToken; // USDC
-    IERC20 public JVUSDC; // JVUSDC
-    VoltzUSDC public token; // JVUSDC ERC instantiation
+    VoltzUSDC public JVUSDC; // JVUSDC ERC instantiation
 
     //
     // Aave contracts
@@ -125,8 +98,7 @@ contract JointVaultStrategy {
         underlyingToken = IERC20(_underlyingToken);
 
         // Deploy JVUSDC token
-        token = new VoltzUSDC("Joint Voltz USDC", "jvUSDC"); 
-        JVUSDC = IERC20(address(token));
+        JVUSDC = new VoltzUSDC("Joint Voltz USDC", "jvUSDC"); 
 
         // Voltz contracts
         factory = IFactory(_factory);
@@ -200,32 +172,39 @@ contract JointVaultStrategy {
     //
 
     function deposit(uint256 amount) public isInCollectionWindow {
-        require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance");
+        require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
 
-        bool success = underlyingToken.transferFrom(msg.sender, address(this), amount);        
+        bool success = underlyingToken.transferFrom(msg.sender,address(this), amount);        
         require(success);
 
         success = underlyingToken.approve(address(AAVE), amount);
         require(success);
 
         uint256 finalAmount = amount / crate * 100;
+
+        uint aave_t0 = variableRateToken.balanceOf(address(this));
         AAVE.deposit(address(underlyingToken), finalAmount, address(this), 0);
 
-        token.adminMint(msg.sender, amount);      
+        uint aave_t1 = variableRateToken.balanceOf(address(this));
+        require(aave_t1 - aave_t0 == amount, "Aave deposit failed;");
+
+        JVUSDC.adminMint(msg.sender, amount);      
     }
 
     function withdraw(uint256 amount) public isInCollectionWindow {
-        require(JVUSDC.allowance(msg.sender, address(this)) > 0, "No allowance");
+        require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
+
         bool success = JVUSDC.transferFrom(msg.sender, address(this), amount);
         require(success);
-        token.adminBurn(address(this), amount);
-        uint256 finalAmount = crate * amount / 100;
 
+        JVUSDC.adminBurn(address(this), amount);
+
+        uint256 finalAmount = crate * amount / 100;        
         uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
-        require(wa == finalAmount, "Not enough collateral");
+        require(wa == finalAmount, "Not enough collateral;");
 
         success = underlyingToken.transfer(msg.sender, finalAmount);
-        require(success);      
+        require(success);
     }
 
     function contractBalanceUsdc() public view returns (uint256){
@@ -237,7 +216,7 @@ contract JointVaultStrategy {
     }
 
     fallback() external {
-        if (msg.sender == address(token)) {
+        if (msg.sender == address(JVUSDC)) {
             revert("No known function targeted");
         }
     }
