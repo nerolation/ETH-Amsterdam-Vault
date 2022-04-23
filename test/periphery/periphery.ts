@@ -147,7 +147,10 @@ describe("Periphery", async () => {
 
     // Deploy mock vUSDC token
     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
-    const vUSDC = (await ERC20MockFactory.deploy("voltz USDC", "vUSDC")) as ERC20Mock;
+    const vUSDC = (await ERC20MockFactory.deploy(
+      "voltz USDC",
+      "vUSDC"
+    )) as ERC20Mock;
 
     console.log("token.address", token.address);
     console.log("factory.address", factory.address);
@@ -963,9 +966,6 @@ describe("Periphery", async () => {
         marginDelta: toBn("100000"),
       });
 
-      const underlyingYieldBearingToken =
-      await fcmTest.underlyingYieldBearingToken();
-
       await fungibleVoltz.execute();
     });
 
@@ -978,9 +978,6 @@ describe("Periphery", async () => {
         isMint: true,
         marginDelta: toBn("100000"),
       });
-
-      const underlyingYieldBearingToken =
-        await fcmTest.underlyingYieldBearingToken();
 
       const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
         fungibleVoltz.address
