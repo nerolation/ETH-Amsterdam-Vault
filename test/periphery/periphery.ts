@@ -1113,7 +1113,9 @@ describe("Periphery", async () => {
       it("calculates conversion factor to be 1 when jvUSDC is equal to amount of aUSDC", async () => {
         await jvUSDC.mint(jointVault.address, toBn("100"));
 
-        expect(await jointVault.conversionFactor()).to.equal(toBn("1"));
+        expect(await jointVault.conversionFactor()).to.equal(
+          BigNumber.from(100)
+        );
 
         // Burn again to make test idempotent
         await jvUSDC.burn(jointVault.address, toBn("100"));
@@ -1123,7 +1125,7 @@ describe("Periphery", async () => {
         await jvUSDC.mint(jointVault.address, toBn("200"));
 
         expect(await jointVault.conversionFactor()).to.equal(
-          BigNumber.from(toBn("0.5"))
+          BigNumber.from(BigNumber.from(50))
         );
 
         // Burn again to make test idempotent
@@ -1133,7 +1135,9 @@ describe("Periphery", async () => {
       it("calculates conversion factor to be 2 when jvUSDC is equal to half the amount of aUSDC", async () => {
         await jvUSDC.mint(jointVault.address, toBn("50"));
 
-        expect(await jointVault.conversionFactor()).to.equal(toBn("2"));
+        expect(await jointVault.conversionFactor()).to.equal(
+          BigNumber.from(200)
+        );
 
         // Burn again to make test idempotent
         await jvUSDC.burn(jointVault.address, toBn("50"));

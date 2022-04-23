@@ -124,14 +124,14 @@ contract JointVaultStrategy {
     // Data functions
     //
 
-    // Returns factor in wei format to handle sub 1 numbers. TODO: Consider floating point arithmetic.
+    // Returns factor in 2 decimal format to handle sub 1 numbers.
     function conversionFactor() public view returns (uint256) {
         if (jvUSDC.balanceOf(address(this)) == 0) {
             return 0;
         }
 
         return (
-            (variableRateToken.balanceOf(address(this)) + underlyingToken.balanceOf(address(this))) * (10 ** jvUSDC.decimals())
+            (variableRateToken.balanceOf(address(this)) + underlyingToken.balanceOf(address(this))) * 100
             / jvUSDC.balanceOf(address(this))
         );
     }
