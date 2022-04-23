@@ -1,5 +1,5 @@
 import { ethers, waffle } from "hardhat";
-import { BigNumber, utils, Wallet } from "ethers";
+import { BigNumber, utils, Wallet, Contract } from "ethers";
 import { expect } from "../shared/expect";
 import { metaFixture } from "../shared/fixtures";
 import { toBn } from "evm-bn";
@@ -33,6 +33,8 @@ import { TickMath } from "../shared/tickMath";
 import { mul } from "../shared/functions";
 import { advanceTimeAndBlock, getCurrentTimestamp } from "../helpers/time";
 import { consts } from "../helpers/constants";
+// const erc20ABI = require("../../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json");
+const erc20ABI = require("../../artifacts/contracts/test/ERC20Mock.sol/ERC20Mock.json");
 
 const createFixtureLoader = waffle.createFixtureLoader;
 
@@ -144,19 +146,11 @@ describe("Periphery", async () => {
       "JointVaultStrategy"
     );
 
-    // Deploy mock jvUSDC token
-    const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
-    jvUSDC = (await ERC20MockFactory.deploy(
-      "voltz USDC",
-      "jvUSDC"
-    )) as ERC20Mock;
-
     const currentTimestamp = await getCurrentTimestamp();
 
     jointVault = (await jointVaultFactory.deploy(
       mockAToken.address,
       token.address,
-      jvUSDC.address,
       factory.address,
       fcmTest.address,
       marginEngineTest.address,
@@ -169,15 +163,15 @@ describe("Periphery", async () => {
 
     await jointVault.deployed();
 
+    const jvUSDCAddress = await jointVault.JVUSDC();
+    jvUSDC = new Contract(jvUSDCAddress, erc20ABI.abi, wallet) as ERC20Mock;
+
     // mint aTokens
     await mockAToken.mint(
       jointVault.address,
       toBn("100"),
       currentReserveNormalisedIncome
     );
-
-    // burn the tokens initially minted by MockToken contract
-    await jvUSDC.burn(wallet.address, toBn("1", 12));
   });
 
   it("set lp notional cap works as expected with margin engine owner", async () => {
@@ -1077,37 +1071,37 @@ describe("Periphery", async () => {
 
     describe("Deposit tests", () => {
       it("can execute a deposit when in collection window", async () => {
-        // console.log("token balance", (await token.balanceOf(wallet.address)).toString());
-
         await token.increaseAllowance(jointVault.address, toBn("1"));
 
-        console.log('wallet address', wallet.address);
-
-        // await jvUSDC.increaseAllowance(wallet.address, toBn("1"));
-        // await jvUSDC.mint(wallet.address, toBn("1"));
-
-        // await expect(jointVault.deposit(toBn('1'))).to.not.be.reverted;
-        await jointVault.deposit(toBn("1"));
-
-        // Burn again to make test idempotent
-        // await jvUSDC.burn(wallet.address, toBn("1"));
+        await expect(jointVault.deposit(toBn("1"))).to.not.be.reverted;
       });
 
       it("cannot execute a deposit when not in collection window", async () => {
+        await token.increaseAllowance(jointVault.address, toBn("1"));
+
         // advance time by two days
         await advanceTimeAndBlock(
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(jointVault.deposit(toBn('1'))).to.be.revertedWith(
+
+        await expect(jointVault.deposit(toBn("1"))).to.be.revertedWith(
           "Collection window not open"
         );
       });
     });
 
     describe("Withdraw tests", () => {
+      beforeEach(async () => {
+        await token.increaseAllowance(jointVault.address, toBn("1"));
+
+        await jointVault.deposit(toBn("1"));
+      });
+
       it("can execute a withdraw when in collection window", async () => {
-        await expect(jointVault.withdraw(toBn('1'))).to.not.be.reverted;
+        await jvUSDC.increaseAllowance(jointVault.address, toBn("1"));
+
+        await expect(jointVault.withdraw(toBn("1"))).to.not.be.reverted;
       });
 
       it("cannot execute a withdraw when not in collection window", async () => {
@@ -1116,50 +1110,30 @@ describe("Periphery", async () => {
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(jointVault.withdraw(toBn('1'))).to.be.revertedWith(
+        await expect(jointVault.withdraw(toBn("1"))).to.be.revertedWith(
           "Collection window not open"
         );
       });
     });
 
     describe("Conversion factor tests", () => {
+      beforeEach(async () => {
+        await mockAToken.cheatBurn(jointVault.address, toBn("100"));
+      });
+
       it("calculates conversion factor to be 0 when no jvUSDC minted", async () => {
         await expect(jointVault.conversionFactor()).to.be.revertedWith(
-          "jvUSDC totalSupply is zero"
+          "JVUSDC totalSupply is zero"
         );
       });
 
-      it("calculates conversion factor to be 1 when jvUSDC is equal to amount of aUSDC", async () => {
-        await jvUSDC.mint(jointVault.address, toBn("100"));
+      it("calculates conversion factor to be 100 when jvUSDC is equal to amount of aUSDC", async () => {
+        await token.increaseAllowance(jointVault.address, toBn("100"));
+        await jointVault.deposit(toBn("100"));
 
         expect(await jointVault.conversionFactor()).to.equal(
           BigNumber.from(100)
         );
-
-        // Burn again to make test idempotent
-        await jvUSDC.burn(jointVault.address, toBn("100"));
-      });
-
-      it("calculates conversion factor to be 0.5 when jvUSDC is equal to double the amount of aUSDC", async () => {
-        await jvUSDC.mint(jointVault.address, toBn("200"));
-
-        expect(await jointVault.conversionFactor()).to.equal(
-          BigNumber.from(BigNumber.from(50))
-        );
-
-        // Burn again to make test idempotent
-        await jvUSDC.burn(jointVault.address, toBn("200"));
-      });
-
-      it("calculates conversion factor to be 2 when jvUSDC is equal to half the amount of aUSDC", async () => {
-        await jvUSDC.mint(jointVault.address, toBn("50"));
-
-        expect(await jointVault.conversionFactor()).to.equal(
-          BigNumber.from(200)
-        );
-
-        // Burn again to make test idempotent
-        await jvUSDC.burn(jointVault.address, toBn("50"));
       });
     });
   });

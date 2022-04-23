@@ -129,7 +129,9 @@ contract MockAaveLendingPool is IAaveV2LendingPool {
         address onBehalfOf,
         uint16 referralCode
     ) external {
-        AaveDataTypes.ReserveData storage reserve = _reserves[IERC20Minimal(asset)];
+        AaveDataTypes.ReserveData storage reserve = _reserves[
+            IERC20Minimal(asset)
+        ];
 
         address aToken = reserve.aTokenAddress;
 

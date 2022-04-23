@@ -49,10 +49,10 @@ contract JointVaultStrategy {
     // Token contracts
     //
 
-    IERC20 variableRateToken; // AUSDC
-    IERC20 underlyingToken; // USDC
-    IERC20 JVUSDC; // JVUSDC
-    VoltzUSDC token; // JVUSDC ERC instantiation
+    IERC20 public variableRateToken; // AUSDC
+    IERC20 public underlyingToken; // USDC
+    IERC20 public JVUSDC; // JVUSDC
+    VoltzUSDC public token; // JVUSDC ERC instantiation
 
     //
     // Aave contracts
@@ -114,7 +114,6 @@ contract JointVaultStrategy {
     constructor(
         address _variableRateToken,
         address _underlyingToken,
-        address _JVUSDC,
         address _factory,
         address _fcm,
         address _marginEngine,
@@ -124,7 +123,10 @@ contract JointVaultStrategy {
         // Token contracts
         variableRateToken = IERC20(_variableRateToken);
         underlyingToken = IERC20(_underlyingToken);
-        JVUSDC = IERC20(_JVUSDC);
+
+        // Deploy JVUSDC token
+        token = new VoltzUSDC("Joint Voltz USDC", "jvUSDC"); 
+        JVUSDC = IERC20(address(token));
 
         // Voltz contracts
         factory = IFactory(_factory);
@@ -137,10 +139,6 @@ contract JointVaultStrategy {
 
         // Set initial collection window
         collectionWindow = _collectionWindow;
-
-        // Deploy JVUSDC token
-        token = new VoltzUSDC("Joint Voltz USDC", "jvUSDC"); 
-        JVUSDC = IERC20(address(token));
 
         // initialize conversion rate
         crate = 100; 
@@ -202,9 +200,6 @@ contract JointVaultStrategy {
     //
 
     function deposit(uint256 amount) public isInCollectionWindow {
-        console.log('underlyingToken allowance', underlyingToken.allowance(msg.sender, address(this)));
-        console.log('function amount', amount);
-
         require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance");
 
         bool success = underlyingToken.transferFrom(msg.sender, address(this), amount);        
@@ -224,9 +219,8 @@ contract JointVaultStrategy {
         bool success = JVUSDC.transferFrom(msg.sender, address(this), amount);
         require(success);
         token.adminBurn(address(this), amount);
-        uint256 finalAmount = crate * amount / 100;        
-        // uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
-        // require(wa == finalAmount, "Not enough collateral;");
+        uint256 finalAmount = crate * amount / 100;
+
         uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
         require(wa == finalAmount, "Not enough collateral");
 
