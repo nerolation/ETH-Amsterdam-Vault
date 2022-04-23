@@ -31,7 +31,7 @@ import {
 } from "../shared/utilities";
 import { TickMath } from "../shared/tickMath";
 import { mul } from "../shared/functions";
-import { advanceTimeAndBlock } from "../helpers/time";
+import { advanceTimeAndBlock, getCurrentTimestamp } from "../helpers/time";
 import { consts } from "../helpers/constants";
 
 const createFixtureLoader = waffle.createFixtureLoader;
@@ -148,13 +148,19 @@ describe("Periphery", async () => {
     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
     vUSDC = (await ERC20MockFactory.deploy("voltz USDC", "vUSDC")) as ERC20Mock;
 
+    const currentTimestamp = await getCurrentTimestamp();
+
     fungibleVoltz = (await fungibleVoltzFactory.deploy(
       mockAToken.address,
       token.address,
       vUSDC.address,
       factory.address,
       fcmTest.address,
-      marginEngineTest.address
+      marginEngineTest.address,
+      {
+        start: currentTimestamp,
+        end: currentTimestamp + 86400, // one day later
+      }
     )) as FungibleVoltz;
 
     await fungibleVoltz.deployed();
@@ -1009,6 +1015,40 @@ describe("Periphery", async () => {
       });
     });
 
+    describe("Deposit tests", () => {
+      it("can execute a deposit when in collection window", async () => {
+        await expect(fungibleVoltz.deposit()).to.not.be.reverted;
+      });
+
+      it("cannot execute a deposit when not in collection window", async () => {
+        // advance time by two days
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(2)),
+          4
+        );
+        await expect(fungibleVoltz.deposit()).to.be.revertedWith(
+          "Collection window not open"
+        );
+      });
+    });
+
+    describe("Withdraw tests", () => {
+      it("can execute a withdraw when in collection window", async () => {
+        await expect(fungibleVoltz.withdraw()).to.not.be.reverted;
+      });
+
+      it("cannot execute a withdraw when not in collection window", async () => {
+        // advance time by two days
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(2)),
+          4
+        );
+        await expect(fungibleVoltz.withdraw()).to.be.revertedWith(
+          "Collection window not open"
+        );
+      });
+    });
+
     describe("Conversion factor tests", () => {
       it("calculates conversion factor to be 0 when no vUSDC minted", async () => {
         expect(await fungibleVoltz.conversionFactor()).to.equal(
@@ -1032,6 +1072,7 @@ describe("Periphery", async () => {
           BigNumber.from(toBn("0.5"))
         );
 
+        // Burn again to make test idempotent
         await vUSDC.burn(fungibleVoltz.address, toBn("200"));
       });
 
@@ -1040,6 +1081,7 @@ describe("Periphery", async () => {
 
         expect(await fungibleVoltz.conversionFactor()).to.equal(toBn("2"));
 
+        // Burn again to make test idempotent
         await vUSDC.burn(fungibleVoltz.address, toBn("50"));
       });
     });

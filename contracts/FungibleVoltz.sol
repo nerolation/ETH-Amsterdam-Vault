@@ -24,13 +24,35 @@ contract FungibleVoltz {
     IMarginEngine marginEngine;
     IFCM fcm;
 
+    // Logic variables
+    CollectionWindow collectionWindow;
+
+    // Structs
+    struct CollectionWindow {
+        uint256 start; // unix timestamp in seconds
+        uint256 end; // unix timestamp in seconds
+    }
+
+    modifier isInCollectionWindow() {
+        require(collectionWindowSet(), "Collection window not set");
+        require(inCollectionWindow(), "Collection window not open");
+        _;
+    }
+
+    modifier isNotInCollectionWindow() {
+        require(collectionWindowSet(), "Collection window not set");
+        require(!inCollectionWindow(), "Collection window open");
+        _;
+    }
+
     constructor(
         address _variableRateToken,
         address _fixedRateToken,
         address _fungibleToken,
         address _factory,
         address _fcm,
-        address _marginEngine
+        address _marginEngine,
+        CollectionWindow memory _collectionWindow
     ) {
         // Token contracts
         variableRateToken = IERC20Minimal(_variableRateToken);
@@ -42,6 +64,17 @@ contract FungibleVoltz {
         periphery = IPeriphery(factory.periphery());
         fcm = IFCM(_fcm);
         marginEngine = IMarginEngine(_marginEngine);
+
+        // Set initial collection window
+        collectionWindow = _collectionWindow; 
+    }
+
+    function collectionWindowSet() internal returns (bool) {
+        return collectionWindow.start != 0 && collectionWindow.end != 0;
+    }
+
+    function inCollectionWindow() internal returns (bool) {
+        return block.timestamp >= collectionWindow.start && block.timestamp < collectionWindow.end;
     }
 
     function execute() public {
@@ -64,5 +97,13 @@ contract FungibleVoltz {
             (variableRateToken.balanceOf(address(this)) + fixedRateToken.balanceOf(address(this))) * (10 ** fungibleToken.decimals())
             / fungibleToken.balanceOf(address(this))
         );
+    }
+
+    function deposit() public isInCollectionWindow {
+        // TODO
+    }
+
+    function withdraw() public isInCollectionWindow {
+        // TODO
     }
 }
