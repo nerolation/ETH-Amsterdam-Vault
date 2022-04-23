@@ -173,6 +173,9 @@ contract JointVaultStrategy {
 
         // Update cRate
         updateCRate();
+        
+        // Convert USDC to AUSDC
+        // AAVE.deposit(address(underlyingToken), variableRateToken.balanceOf(address(this)), address(this), 0);
     }
 
     //
@@ -182,7 +185,7 @@ contract JointVaultStrategy {
     function deposit(uint256 amount) public isInCollectionWindow {
         require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
 
-        bool success = underlyingToken.transferFrom(msg.sender,address(this), amount);        
+        bool success = underlyingToken.transferFrom(msg.sender, address(this), amount);        
         require(success);
 
         success = underlyingToken.approve(address(AAVE), amount);

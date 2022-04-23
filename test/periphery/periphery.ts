@@ -1137,5 +1137,78 @@ describe("Periphery", async () => {
         );
       });
     });
+
+    describe("End to end scenario", () => {
+      it.only("deposits, executes, settles, and withdraws", async () => {
+        // deposit
+        await token.increaseAllowance(jointVault.address, toBn("1000"));
+
+        await mockAToken.cheatBurn(jointVault.address, toBn("100"));
+
+        console.log(
+          "balanceOf jointVault AUSDC before deposit",
+          (await mockAToken.balanceOf(jointVault.address)).toString()
+        );
+        console.log(
+          "balanceOf jointVault USDC before deposit",
+          (await token.balanceOf(jointVault.address)).toString()
+        );
+
+        await jointVault.deposit(toBn("1000", 6));
+
+        // advance time by two days and four blocks
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(2)),
+          4
+        );
+
+        // provide liquidity into pool
+        await periphery.mintOrBurn({
+          marginEngine: marginEngineTest.address,
+          tickLower: -TICK_SPACING,
+          tickUpper: TICK_SPACING,
+          notional: toBn("100000000"),
+          isMint: true,
+          marginDelta: toBn("100000000"),
+        });
+
+        console.log(
+          "balanceOf jointVault AUSDC before execution",
+          (await mockAToken.balanceOf(jointVault.address)).toString()
+        );
+        console.log(
+          "balanceOf jointVault USDC before execution",
+          (await token.balanceOf(jointVault.address)).toString()
+        );
+
+        // execute strategy
+        await jointVault.execute();
+
+        console.log(
+          "balanceOf jointVault AUSDC before settlement",
+          (await mockAToken.balanceOf(jointVault.address)).toString()
+        );
+        console.log(
+          "balanceOf jointVault USDC before settlement",
+          (await token.balanceOf(jointVault.address)).toString()
+        );
+
+        // fast forward one year with four blocks
+        // await advanceTimeAndBlock(consts.ONE_YEAR.div(10), 4);
+        await advanceTimeAndBlock(consts.ONE_DAY.mul(6), 4);
+
+        // settle
+        await jointVault.settle();
+
+        console.log(
+          "balanceOf jointVault AUSDC",
+          (await mockAToken.balanceOf(jointVault.address)).toString()
+        );
+        console.log(
+          "balanceOf jointVault USDC",
+          (await token.balanceOf(jointVault.address)).toString()
+        );
+      });
+    });
   });
 });

@@ -93,25 +93,6 @@ contract MockAaveLendingPool is IAaveV2LendingPool {
             amountToWithdraw = userBalance;
         }
 
-        //  ValidationLogic.validateWithdraw(
-        //   asset,
-        //   amountToWithdraw,
-        //   userBalance,
-        //   _reserves,
-        //   _usersConfig[msg.sender],
-        //   _reservesList,
-        //   _reservesCount,
-        //   _addressesProvider.getPriceOracle()
-        // );
-
-        // reserve.updateState();
-        // reserve.updateInterestRates(asset, aToken, 0, amountToWithdraw);
-
-        // if (amountToWithdraw == userBalance) {
-        //   _usersConfig[msg.sender].setUsingAsCollateral(reserve.id, false);
-        //   emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
-        // }
-
         // AB: replaced reserve.liquidityIndex with getReserveNormalizedIncome()
         IAToken(aToken).burn(
             msg.sender,
@@ -135,33 +116,13 @@ contract MockAaveLendingPool is IAaveV2LendingPool {
 
         address aToken = reserve.aTokenAddress;
 
-        // uint256 userBalance = IERC20Minimal(aToken).balanceOf(msg.sender);
+        IERC20Minimal underlyingToken = IERC20Minimal(asset);
+        underlyingToken.transferFrom(msg.sender, address(this), amount);
 
         IAToken(aToken).mint(
             msg.sender,
             amount,
             getReserveNormalizedIncome(IERC20Minimal(asset))
         );
-
-        // AaveDataTypes.ReserveData storage reserve = _reserves[asset];
-        // address aToken = reserve.aTokenAddress;
-
-        // uint256 userBalance = IERC20Minimal(aToken).balanceOf(msg.sender);
-
-        // uint256 amountToWithdraw = amount;
-
-        // if (amount == type(uint256).max) {
-        //     amountToWithdraw = userBalance;
-        // }
-
-        // // AB: replaced reserve.liquidityIndex with getReserveNormalizedIncome()
-        // IAToken(aToken).burn(
-        //     msg.sender,
-        //     to,
-        //     amountToWithdraw,
-        //     getReserveNormalizedIncome(asset)
-        // );
-
-        // return amountToWithdraw;
     }
 }
