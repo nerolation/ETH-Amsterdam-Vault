@@ -982,34 +982,66 @@ describe("Periphery", async () => {
       const underlyingYieldBearingToken =
         await fcmTest.underlyingYieldBearingToken();
 
-      const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(fungibleVoltz.address);
-      const balanceBeforeExecutionUSDC = await token.balanceOf(fungibleVoltz.address);
+      const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
+        fungibleVoltz.address
+      );
+      const balanceBeforeExecutionUSDC = await token.balanceOf(
+        fungibleVoltz.address
+      );
 
-      console.log('balanceBeforeExecutionAUSDC', balanceBeforeExecutionAUSDC.toString());
-      console.log('balanceBeforeExecutionUSDC', balanceBeforeExecutionUSDC.toString());
+      console.log(
+        "balanceBeforeExecutionAUSDC",
+        balanceBeforeExecutionAUSDC.toString()
+      );
+      console.log(
+        "balanceBeforeExecutionUSDC",
+        balanceBeforeExecutionUSDC.toString()
+      );
 
       await fungibleVoltz.execute();
 
-      const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(fungibleVoltz.address);
-      const balanceAfterExecutionUSDC = await token.balanceOf(fungibleVoltz.address);
+      const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
+        fungibleVoltz.address
+      );
+      const balanceAfterExecutionUSDC = await token.balanceOf(
+        fungibleVoltz.address
+      );
 
-      console.log('balanceAfterExecutionAUSDC', balanceAfterExecutionAUSDC.toString());
-      console.log('balanceAfterExecutionUSDC', balanceAfterExecutionUSDC.toString());
+      console.log(
+        "balanceAfterExecutionAUSDC",
+        balanceAfterExecutionAUSDC.toString()
+      );
+      console.log(
+        "balanceAfterExecutionUSDC",
+        balanceAfterExecutionUSDC.toString()
+      );
 
-      expect(balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)).to.equal(toBn('10'));
+      expect(
+        balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)
+      ).to.equal(toBn("10"));
 
       await advanceTimeAndBlock(consts.ONE_YEAR, 4);
 
       await fungibleVoltz.settle();
 
-      const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(fungibleVoltz.address);
-      const balanceAfterSettlementUSDC = await token.balanceOf(fungibleVoltz.address);
+      const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(
+        fungibleVoltz.address
+      );
+      const balanceAfterSettlementUSDC = await token.balanceOf(
+        fungibleVoltz.address
+      );
 
       // expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
       // expect(balanceAfterSettlementUSDC).to.be.greaterThan(balanceAfterSettlementUSDC);
 
-      console.log('balanceAfterSettlementAUSDC', balanceAfterSettlementAUSDC.toString());
-      console.log('balanceAfterSettlementUSDC', balanceAfterSettlementUSDC.toString());
+      console.log(
+        "balanceAfterSettlementAUSDC",
+        balanceAfterSettlementAUSDC.toString()
+      );
+      console.log(
+        "balanceAfterSettlementUSDC",
+        balanceAfterSettlementUSDC.toString()
+      );
     });
   });
 });
