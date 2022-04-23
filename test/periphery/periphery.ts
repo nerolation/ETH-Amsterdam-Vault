@@ -9,6 +9,7 @@ import {
   Periphery,
   TestMarginEngine,
   TestVAMM,
+  FungibleVoltz
 } from "../../typechain";
 import {
   APY_UPPER_MULTIPLIER,
@@ -37,6 +38,7 @@ describe("Periphery", async () => {
   let marginEngineTest: TestMarginEngine;
   let periphery: Periphery;
   let factory: Factory;
+  let fungibleVoltz: FungibleVoltz;
 
   let loadFixture: ReturnType<typeof createFixtureLoader>;
 
@@ -96,6 +98,8 @@ describe("Periphery", async () => {
 
     periphery = (await peripheryFactory.deploy()) as Periphery;
 
+    console.log('periphery address in test', periphery.address);
+
     // set the periphery in the factory
     await expect(factory.setPeriphery(periphery.address))
       .to.emit(factory, "PeripheryUpdate")
@@ -110,6 +114,25 @@ describe("Periphery", async () => {
     await token
       .connect(other)
       .approve(periphery.address, BigNumber.from(10).pow(27));
+
+      // Deploy FungibleVoltz contract
+      
+      const fungibleVoltzFactory = await ethers.getContractFactory("FungibleVoltz");
+
+      console.log('token.address', token.address);
+      console.log('factory.address', factory.address);
+      console.log('periphery.address', periphery.address);
+
+      fungibleVoltz = (await fungibleVoltzFactory.deploy(
+        token.address,
+        factory.address,
+        periphery.address,
+        marginEngineTest.address,
+      )) as FungibleVoltz;
+
+      await fungibleVoltz.deployed();
+
+      await token.mint(fungibleVoltz.address, BigNumber.from(10).pow(27).mul(2));
   });
 
   it("set lp notional cap works as expected with margin engine owner", async () => {
@@ -890,5 +913,16 @@ describe("Periphery", async () => {
       "-5007499619400846835",
       10
     );
+  });
+
+  describe.only('FungibleVoltz Tests', async () => {
+    it('executes hasBalance function successfully', async () => {
+      expect(await fungibleVoltz.hasBalance()).to.be.true;
+    });
+
+    it('executes mint function successfully', async () => {
+      await fungibleVoltz.mint();
+      // await expect(fungibleVoltz.mint()).to.be.not.reverted; 
+    });
   });
 });

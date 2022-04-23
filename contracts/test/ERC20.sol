@@ -2,6 +2,8 @@
 
 pragma solidity =0.8.9;
 
+import "hardhat/console.sol";
+
 /*
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available
@@ -379,6 +381,7 @@ contract ERC20 is Context, IERC20 {
         override
         returns (uint256)
     {
+        console.log('balanceOf', account);
         return _balances[account];
     }
 
