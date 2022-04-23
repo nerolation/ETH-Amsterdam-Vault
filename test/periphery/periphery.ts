@@ -953,45 +953,63 @@ describe("Periphery", async () => {
       expect(await fungibleVoltz.hasBalance()).to.be.true;
     });
 
-    // it("executes mint function successfully", async () => {
-    //   await expect(fungibleVoltz.mint()).to.be.not.reverted;
-    // });
-
-    it("executes a swap successfully", async () => {
-      // await vammTest.initializeVAMM(encodeSqrtRatioX96(1, 1).toString());
-
-      // await periphery.mintOrBurn({
-      //   marginEngine: marginEngineTest.address,
-      //   tickLower: -TICK_SPACING,
-      //   tickUpper: TICK_SPACING,
-      //   notional: toBn("900"),
-      //   isMint: true,
-      //   marginDelta: toBn("100"),
-      // });
-
-      const notionalMinted = toBn("100");
-
+    it("executes a swap", async () => {
       await periphery.mintOrBurn({
         marginEngine: marginEngineTest.address,
         tickLower: -TICK_SPACING,
         tickUpper: TICK_SPACING,
-        notional: notionalMinted,
+        notional: toBn("100"),
         isMint: true,
         marginDelta: toBn("100000"),
       });
 
-      // await vammTest.initializeVAMM(encodeSqrtRatioX96(1, 1).toString());
+      const underlyingYieldBearingToken =
+        await fcmTest.underlyingYieldBearingToken();
+
+      await fungibleVoltz.execute();
+    });
+
+    it("executes a swap and settles after maturity", async () => {
+      await periphery.mintOrBurn({
+        marginEngine: marginEngineTest.address,
+        tickLower: -TICK_SPACING,
+        tickUpper: TICK_SPACING,
+        notional: toBn("100"),
+        isMint: true,
+        marginDelta: toBn("100000"),
+      });
 
       const underlyingYieldBearingToken =
         await fcmTest.underlyingYieldBearingToken();
 
-      console.log("underlyingYieldBearingToken", underlyingYieldBearingToken);
+      const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(fungibleVoltz.address);
+      const balanceBeforeExecutionUSDC = await token.balanceOf(fungibleVoltz.address);
+
+      console.log('balanceBeforeExecutionAUSDC', balanceBeforeExecutionAUSDC.toString());
+      console.log('balanceBeforeExecutionUSDC', balanceBeforeExecutionUSDC.toString());
 
       await fungibleVoltz.execute();
 
+      const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(fungibleVoltz.address);
+      const balanceAfterExecutionUSDC = await token.balanceOf(fungibleVoltz.address);
+
+      console.log('balanceAfterExecutionAUSDC', balanceAfterExecutionAUSDC.toString());
+      console.log('balanceAfterExecutionUSDC', balanceAfterExecutionUSDC.toString());
+
+      expect(balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)).to.equal(toBn('10'));
+
       await advanceTimeAndBlock(consts.ONE_YEAR, 4);
 
-      // aait fcmTest.settleTrader();
+      await fungibleVoltz.settle();
+
+      const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(fungibleVoltz.address);
+      const balanceAfterSettlementUSDC = await token.balanceOf(fungibleVoltz.address);
+
+      // expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
+      // expect(balanceAfterSettlementUSDC).to.be.greaterThan(balanceAfterSettlementUSDC);
+
+      console.log('balanceAfterSettlementAUSDC', balanceAfterSettlementAUSDC.toString());
+      console.log('balanceAfterSettlementUSDC', balanceAfterSettlementUSDC.toString());
     });
   });
 });
