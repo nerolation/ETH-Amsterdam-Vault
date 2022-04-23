@@ -31,8 +31,8 @@ import {
 } from "../shared/utilities";
 import { TickMath } from "../shared/tickMath";
 import { mul } from "../shared/functions";
-import {advanceTimeAndBlock} from "../helpers/time";
-import {consts} from "../helpers/constants";
+import { advanceTimeAndBlock } from "../helpers/time";
+import { consts } from "../helpers/constants";
 
 const createFixtureLoader = waffle.createFixtureLoader;
 
@@ -56,9 +56,15 @@ describe("Periphery", async () => {
   });
 
   beforeEach("deploy fixture", async () => {
-    ({ token, vammTest, marginEngineTest, factory, fcmTest, mockAToken, aaveLendingPool } = await loadFixture(
-      metaFixture
-    ));
+    ({
+      token,
+      vammTest,
+      marginEngineTest,
+      factory,
+      fcmTest,
+      mockAToken,
+      aaveLendingPool,
+    } = await loadFixture(metaFixture));
 
     await token.mint(wallet.address, BigNumber.from(10).pow(27).mul(2));
 
@@ -976,9 +982,10 @@ describe("Periphery", async () => {
 
       // await vammTest.initializeVAMM(encodeSqrtRatioX96(1, 1).toString());
 
-      const underlyingYieldBearingToken = await fcmTest.underlyingYieldBearingToken();
+      const underlyingYieldBearingToken =
+        await fcmTest.underlyingYieldBearingToken();
 
-      console.log('underlyingYieldBearingToken', underlyingYieldBearingToken);
+      console.log("underlyingYieldBearingToken", underlyingYieldBearingToken);
 
       await fungibleVoltz.execute();
 
