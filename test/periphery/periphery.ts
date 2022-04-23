@@ -1092,15 +1092,16 @@ describe("Periphery", async () => {
 
     describe("Withdraw tests", () => {
       beforeEach(async () => {
-        await token.increaseAllowance(jointVault.address, toBn("1"));
+        await token.increaseAllowance(jointVault.address, toBn("1", 6));
 
-        await jointVault.deposit(toBn("1"));
+        await jointVault.deposit(toBn("1", 6));
       });
 
       it("can execute a withdraw when in collection window", async () => {
-        await jvUSDC.increaseAllowance(jointVault.address, toBn("1"));
+        await jvUSDC.increaseAllowance(jointVault.address, toBn("1", 18));
 
-        await expect(jointVault.withdraw(toBn("1"))).to.not.be.reverted;
+        // await jointVault.withdraw(toBn("1", 6));
+        await expect(jointVault.withdraw(toBn("1", 6))).to.not.be.reverted;
       });
 
       it("cannot execute a withdraw when not in collection window", async () => {
@@ -1109,7 +1110,8 @@ describe("Periphery", async () => {
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(jointVault.withdraw(toBn("1"))).to.be.revertedWith(
+
+        await expect(jointVault.withdraw(toBn("1", 6))).to.be.revertedWith(
           "Collection window not open"
         );
       });

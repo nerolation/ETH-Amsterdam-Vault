@@ -146,7 +146,7 @@ contract JointVaultStrategy {
         require(JVUSDC.totalSupply() != 0, "JVUSDC totalSupply is zero");
 
         return (
-            variableRateToken.balanceOf(address(this)) * 100
+            variableRateToken.balanceOf(address(this)) * 100 * 10 ** 12
             / JVUSDC.totalSupply()
         );
     }
@@ -196,16 +196,20 @@ contract JointVaultStrategy {
         uint aave_t1 = variableRateToken.balanceOf(address(this));
         require(aave_t1 - aave_t0 == amount, "Aave deposit failed;");
 
-        JVUSDC.adminMint(msg.sender, amount);      
+        uint mintAmount = amount * 10 ** 12;
+        JVUSDC.adminMint(msg.sender, mintAmount);      
     }
 
     function withdraw(uint256 amount) public isInCollectionWindow {
+        uint burnAmount = amount * 10 ** 12;
+
         require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
 
-        bool success = JVUSDC.transferFrom(msg.sender, address(this), amount);
+
+        bool success = JVUSDC.transferFrom(msg.sender, address(this), burnAmount);
         require(success);
 
-        JVUSDC.adminBurn(address(this), amount);
+        JVUSDC.adminBurn(address(this), burnAmount);
 
         uint256 finalAmount = cRate * amount / 100;        
         uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
