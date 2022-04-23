@@ -141,11 +141,13 @@ describe("Periphery", async () => {
     const currentReserveNormalisedIncome =
       await aaveLendingPool.getReserveNormalizedIncome(token.address);
 
-    // await token.mint(fungibleVoltz.address, BigNumber.from(10).pow(27).mul(2));
-
     const fungibleVoltzFactory = await ethers.getContractFactory(
       "FungibleVoltz"
     );
+
+    // Deploy mock vUSDC token
+    const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
+    const vUSDC = (await ERC20MockFactory.deploy("voltz USDC", "vUSDC")) as ERC20Mock;
 
     console.log("token.address", token.address);
     console.log("factory.address", factory.address);
@@ -153,6 +155,8 @@ describe("Periphery", async () => {
 
     fungibleVoltz = (await fungibleVoltzFactory.deploy(
       mockAToken.address,
+      token.address,
+      vUSDC.address,
       factory.address,
       fcmTest.address,
       marginEngineTest.address
@@ -949,10 +953,6 @@ describe("Periphery", async () => {
   });
 
   describe.only("FungibleVoltz Tests", async () => {
-    it("executes hasBalance function successfully", async () => {
-      expect(await fungibleVoltz.hasBalance()).to.be.true;
-    });
-
     it("executes a swap", async () => {
       await periphery.mintOrBurn({
         marginEngine: marginEngineTest.address,
@@ -964,7 +964,7 @@ describe("Periphery", async () => {
       });
 
       const underlyingYieldBearingToken =
-        await fcmTest.underlyingYieldBearingToken();
+      await fcmTest.underlyingYieldBearingToken();
 
       await fungibleVoltz.execute();
     });

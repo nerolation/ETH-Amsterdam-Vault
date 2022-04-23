@@ -9,49 +9,43 @@ import "./interfaces/rate_oracles/IRateOracle.sol";
 import "hardhat/console.sol";
 
 contract FungibleVoltz {
+    // Constants
     uint160 MIN_SQRT_RATIO = 2503036416286949174936592462;
     uint160 MAX_SQRT_RATIO = 2507794810551837817144115957740;
 
-    IERC20Minimal underlying;
+    // Token contracts
+    IERC20Minimal variableRateToken; // AUSDC
+    IERC20Minimal fixedRateToken; // USDC
+    IERC20Minimal fungibleToken; // vUSDC
+
+    // Voltz contracts
     IFactory factory;
     IPeriphery periphery;
     IMarginEngine marginEngine;
     IFCM fcm;
 
     constructor(
-        address _underlying,
+        address _variableRateToken,
+        address _fixedRateToken,
+        address _fungibleToken,
         address _factory,
         address _fcm,
         address _marginEngine
     ) {
-        underlying = IERC20Minimal(_underlying);
+        // Token contracts
+        variableRateToken = IERC20Minimal(_variableRateToken);
+        fixedRateToken = IERC20Minimal(_fixedRateToken);
+        fungibleToken = IERC20Minimal(_fungibleToken);
+
+        // Voltz contracts
         factory = IFactory(_factory);
         periphery = IPeriphery(factory.periphery());
         fcm = IFCM(_fcm);
         marginEngine = IMarginEngine(_marginEngine);
     }
 
-    function hasBalance() public view returns (bool) {
-        return underlying.balanceOf(address(this)) > 0;
-    }
-
-    // function mint() public {
-    //     underlying.approve(address(periphery), 10 * 1e18);
-
-    //     console.log(address(periphery));
-
-    //     periphery.mintOrBurn(IPeriphery.MintOrBurnParams({
-    //         marginEngine: marginEngine,
-    //         tickLower: 0,
-    //         tickUpper: 1200,
-    //         notional: 10 * 1e18,
-    //         isMint: true,
-    //         marginDelta: 10 * 1e18
-    //     }));
-    // }
-
     function executeMargin() public {
-        underlying.approve(address(periphery), 10 * 1e18);
+        variableRateToken.approve(address(periphery), 10 * 1e18);
         
         periphery.swap(IPeriphery.SwapPeripheryParams({
             marginEngine: marginEngine,
@@ -65,14 +59,16 @@ contract FungibleVoltz {
     }
 
     function execute() public {
-        underlying.approve(address(fcm), 10 * 1e18);
-
-        console.log(underlying.balanceOf(address(this)));
+        variableRateToken.approve(address(fcm), 10 * 1e18);
 
         fcm.initiateFullyCollateralisedFixedTakerSwap(10 * 1e18, MAX_SQRT_RATIO - 1);
     }
 
     function settle() public {
         fcm.settleTrader();
+    }
+
+    function shareValue() public view returns (uint256) {
+        return (variableRateToken.balanceOf(address(this)) + fixedRateToken.balanceOf(address(this))) / fungibleToken.balanceOf(address(this));
     }
 }
