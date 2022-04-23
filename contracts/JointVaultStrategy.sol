@@ -6,7 +6,7 @@ import "./interfaces/IMarginEngine.sol";
 import "./interfaces/fcms/IFCM.sol";
 import "./interfaces/rate_oracles/IRateOracle.sol";
 import "./interfaces/IAAVE.sol";
-import "./VoltzUSDC.sol";
+import "./JointVaultUSDC.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "hardhat/console.sol";
@@ -25,7 +25,7 @@ contract JointVaultStrategy {
 
     IERC20 public variableRateToken; // AUSDC
     IERC20 public underlyingToken; // USDC
-    VoltzUSDC public JVUSDC; // JVUSDC ERC instantiation
+    JointVaultUSDC public JVUSDC; // JVUSDC ERC instantiation
 
     //
     // Aave contracts
@@ -47,7 +47,7 @@ contract JointVaultStrategy {
 
     CollectionWindow public collectionWindow;
     uint256 public termEnd; // unix timestamp in seconds
-    uint public crate; // Conversion rate
+    uint public cRate; // Conversion rate
 
     //
     // Structs
@@ -98,7 +98,7 @@ contract JointVaultStrategy {
         underlyingToken = IERC20(_underlyingToken);
 
         // Deploy JVUSDC token
-        JVUSDC = new VoltzUSDC("Joint Voltz USDC", "jvUSDC"); 
+        JVUSDC = new JointVaultUSDC("Joint Vault USDC", "jvUSDC"); 
 
         // Voltz contracts
         factory = IFactory(_factory);
@@ -113,7 +113,7 @@ contract JointVaultStrategy {
         collectionWindow = _collectionWindow;
 
         // initialize conversion rate
-        crate = 100; 
+        cRate = 100; 
     }
 
     //
@@ -151,20 +151,28 @@ contract JointVaultStrategy {
         );
     }
 
+    function updateCRate() internal { // restriction needed
+        cRate = conversionFactor();
+    }
+
     //
     // Strategy functions
     //
 
     function execute() public canExecute {
-        variableRateToken.approve(address(fcm), 10 * 1e18);
+        variableRateToken.approve(address(fcm), variableRateToken.balanceOf(address(this)));
 
-        fcm.initiateFullyCollateralisedFixedTakerSwap(10 * 1e18, MAX_SQRT_RATIO - 1);
+        fcm.initiateFullyCollateralisedFixedTakerSwap(variableRateToken.balanceOf(address(this)), MAX_SQRT_RATIO - 1);
 
         termEnd = marginEngine.termEndTimestampWad() / 1e18;
     }
 
     function settle() public canSettle {
+        // get AUSDC and USDC from Voltz position
         fcm.settleTrader();
+
+        // Update cRate
+        updateCRate();
     }
 
     //
@@ -180,7 +188,7 @@ contract JointVaultStrategy {
         success = underlyingToken.approve(address(AAVE), amount);
         require(success);
 
-        uint256 finalAmount = amount / crate * 100;
+        uint256 finalAmount = amount / cRate * 100;
 
         uint aave_t0 = variableRateToken.balanceOf(address(this));
         AAVE.deposit(address(underlyingToken), finalAmount, address(this), 0);
@@ -199,7 +207,7 @@ contract JointVaultStrategy {
 
         JVUSDC.adminBurn(address(this), amount);
 
-        uint256 finalAmount = crate * amount / 100;        
+        uint256 finalAmount = cRate * amount / 100;        
         uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
         require(wa == finalAmount, "Not enough collateral;");
 
