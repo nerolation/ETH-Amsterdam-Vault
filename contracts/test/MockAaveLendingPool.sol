@@ -6,6 +6,7 @@ import "prb-math/contracts/PRBMathUD60x18.sol";
 import "../aave/AaveDataTypes.sol";
 import "../interfaces/aave/IAToken.sol";
 import "../utils/Printer.sol";
+import "hardhat/console.sol";
 
 /// @notice This Mock Aave pool can be used in 3 ways
 /// - change the rate to a fixed value (`setReserveNormalizedIncome`)
@@ -120,5 +121,45 @@ contract MockAaveLendingPool is IAaveV2LendingPool {
         );
 
         return amountToWithdraw;
+    }
+
+    function deposit(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external {
+        AaveDataTypes.ReserveData storage reserve = _reserves[IERC20Minimal(asset)];
+
+        address aToken = reserve.aTokenAddress;
+
+        // uint256 userBalance = IERC20Minimal(aToken).balanceOf(msg.sender);
+
+        IAToken(aToken).mint(
+            msg.sender,
+            amount,
+            getReserveNormalizedIncome(IERC20Minimal(asset))
+        );
+
+        // AaveDataTypes.ReserveData storage reserve = _reserves[asset];
+        // address aToken = reserve.aTokenAddress;
+
+        // uint256 userBalance = IERC20Minimal(aToken).balanceOf(msg.sender);
+
+        // uint256 amountToWithdraw = amount;
+
+        // if (amount == type(uint256).max) {
+        //     amountToWithdraw = userBalance;
+        // }
+
+        // // AB: replaced reserve.liquidityIndex with getReserveNormalizedIncome()
+        // IAToken(aToken).burn(
+        //     msg.sender,
+        //     to,
+        //     amountToWithdraw,
+        //     getReserveNormalizedIncome(asset)
+        // );
+
+        // return amountToWithdraw;
     }
 }

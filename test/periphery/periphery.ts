@@ -160,6 +160,7 @@ describe("Periphery", async () => {
       factory.address,
       fcmTest.address,
       marginEngineTest.address,
+      aaveLendingPool.address,
       {
         start: currentTimestamp,
         end: currentTimestamp + 86400, // one day later
@@ -174,6 +175,9 @@ describe("Periphery", async () => {
       toBn("100"),
       currentReserveNormalisedIncome
     );
+
+    // burn the tokens initially minted by MockToken contract
+    await jvUSDC.burn(wallet.address, toBn("1", 12));
   });
 
   it("set lp notional cap works as expected with margin engine owner", async () => {
@@ -1073,7 +1077,20 @@ describe("Periphery", async () => {
 
     describe("Deposit tests", () => {
       it("can execute a deposit when in collection window", async () => {
-        await expect(jointVault.deposit()).to.not.be.reverted;
+        // console.log("token balance", (await token.balanceOf(wallet.address)).toString());
+
+        await token.increaseAllowance(jointVault.address, toBn("1"));
+
+        console.log('wallet address', wallet.address);
+
+        // await jvUSDC.increaseAllowance(wallet.address, toBn("1"));
+        // await jvUSDC.mint(wallet.address, toBn("1"));
+
+        // await expect(jointVault.deposit(toBn('1'))).to.not.be.reverted;
+        await jointVault.deposit(toBn("1"));
+
+        // Burn again to make test idempotent
+        // await jvUSDC.burn(wallet.address, toBn("1"));
       });
 
       it("cannot execute a deposit when not in collection window", async () => {
@@ -1082,7 +1099,7 @@ describe("Periphery", async () => {
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(jointVault.deposit()).to.be.revertedWith(
+        await expect(jointVault.deposit(toBn('1'))).to.be.revertedWith(
           "Collection window not open"
         );
       });
@@ -1090,7 +1107,7 @@ describe("Periphery", async () => {
 
     describe("Withdraw tests", () => {
       it("can execute a withdraw when in collection window", async () => {
-        await expect(jointVault.withdraw()).to.not.be.reverted;
+        await expect(jointVault.withdraw(toBn('1'))).to.not.be.reverted;
       });
 
       it("cannot execute a withdraw when not in collection window", async () => {
@@ -1099,7 +1116,7 @@ describe("Periphery", async () => {
           BigNumber.from(86400).mul(BigNumber.from(2)),
           4
         );
-        await expect(jointVault.withdraw()).to.be.revertedWith(
+        await expect(jointVault.withdraw(toBn('1'))).to.be.revertedWith(
           "Collection window not open"
         );
       });
@@ -1107,7 +1124,9 @@ describe("Periphery", async () => {
 
     describe("Conversion factor tests", () => {
       it("calculates conversion factor to be 0 when no jvUSDC minted", async () => {
-        expect(await jointVault.conversionFactor()).to.equal(BigNumber.from(0));
+        await expect(jointVault.conversionFactor()).to.be.revertedWith(
+          "jvUSDC totalSupply is zero"
+        );
       });
 
       it("calculates conversion factor to be 1 when jvUSDC is equal to amount of aUSDC", async () => {
