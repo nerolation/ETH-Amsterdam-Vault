@@ -9,7 +9,7 @@ import {
   Periphery,
   TestMarginEngine,
   TestVAMM,
-  FungibleVoltz
+  FungibleVoltz,
 } from "../../typechain";
 import {
   APY_UPPER_MULTIPLIER,
@@ -98,7 +98,7 @@ describe("Periphery", async () => {
 
     periphery = (await peripheryFactory.deploy()) as Periphery;
 
-    console.log('periphery address in test', periphery.address);
+    console.log("periphery address in test", periphery.address);
 
     // set the periphery in the factory
     await expect(factory.setPeriphery(periphery.address))
@@ -115,24 +115,26 @@ describe("Periphery", async () => {
       .connect(other)
       .approve(periphery.address, BigNumber.from(10).pow(27));
 
-      // Deploy FungibleVoltz contract
-      
-      const fungibleVoltzFactory = await ethers.getContractFactory("FungibleVoltz");
+    // Deploy FungibleVoltz contract
 
-      console.log('token.address', token.address);
-      console.log('factory.address', factory.address);
-      console.log('periphery.address', periphery.address);
+    const fungibleVoltzFactory = await ethers.getContractFactory(
+      "FungibleVoltz"
+    );
 
-      fungibleVoltz = (await fungibleVoltzFactory.deploy(
-        token.address,
-        factory.address,
-        periphery.address,
-        marginEngineTest.address,
-      )) as FungibleVoltz;
+    console.log("token.address", token.address);
+    console.log("factory.address", factory.address);
+    console.log("periphery.address", periphery.address);
 
-      await fungibleVoltz.deployed();
+    fungibleVoltz = (await fungibleVoltzFactory.deploy(
+      token.address,
+      factory.address,
+      periphery.address,
+      marginEngineTest.address
+    )) as FungibleVoltz;
 
-      await token.mint(fungibleVoltz.address, BigNumber.from(10).pow(27).mul(2));
+    await fungibleVoltz.deployed();
+
+    await token.mint(fungibleVoltz.address, BigNumber.from(10).pow(27).mul(2));
   });
 
   it("set lp notional cap works as expected with margin engine owner", async () => {
@@ -915,14 +917,41 @@ describe("Periphery", async () => {
     );
   });
 
-  describe.only('FungibleVoltz Tests', async () => {
-    it('executes hasBalance function successfully', async () => {
+  describe.only("FungibleVoltz Tests", async () => {
+    it("executes hasBalance function successfully", async () => {
       expect(await fungibleVoltz.hasBalance()).to.be.true;
     });
 
-    it('executes mint function successfully', async () => {
-      await fungibleVoltz.mint();
-      // await expect(fungibleVoltz.mint()).to.be.not.reverted; 
+    // it("executes mint function successfully", async () => {
+    //   await expect(fungibleVoltz.mint()).to.be.not.reverted;
+    // });
+
+    it("executes a swap successfully", async () => {
+      // await vammTest.initializeVAMM(encodeSqrtRatioX96(1, 1).toString());
+
+      // await periphery.mintOrBurn({
+      //   marginEngine: marginEngineTest.address,
+      //   tickLower: -TICK_SPACING,
+      //   tickUpper: TICK_SPACING,
+      //   notional: toBn("900"),
+      //   isMint: true,
+      //   marginDelta: toBn("100"),
+      // });
+
+      const notionalMinted = toBn("100");
+
+      await periphery.mintOrBurn({
+        marginEngine: marginEngineTest.address,
+        tickLower: -TICK_SPACING,
+        tickUpper: TICK_SPACING,
+        notional: notionalMinted,
+        isMint: true,
+        marginDelta: toBn("100000"),
+      });
+
+      // await vammTest.initializeVAMM(encodeSqrtRatioX96(1, 1).toString());
+
+      await fungibleVoltz.execute();
     });
   });
 });

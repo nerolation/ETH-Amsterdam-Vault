@@ -381,7 +381,7 @@ contract ERC20 is Context, IERC20 {
         override
         returns (uint256)
     {
-        console.log('balanceOf', account);
+        console.log("balanceOf", account);
         return _balances[account];
     }
 
