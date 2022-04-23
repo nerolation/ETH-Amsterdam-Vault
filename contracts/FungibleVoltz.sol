@@ -9,29 +9,49 @@ import "./interfaces/rate_oracles/IRateOracle.sol";
 import "hardhat/console.sol";
 
 contract FungibleVoltz {
+    //
     // Constants
+    //
+
     uint160 MIN_SQRT_RATIO = 2503036416286949174936592462;
     uint160 MAX_SQRT_RATIO = 2507794810551837817144115957740;
 
+    //
     // Token contracts
+    //
+
     IERC20Minimal variableRateToken; // AUSDC
     IERC20Minimal fixedRateToken; // USDC
     IERC20Minimal fungibleToken; // vUSDC
 
+    //
     // Voltz contracts
+    //
+
     IFactory factory;
     IPeriphery periphery;
     IMarginEngine marginEngine;
     IFCM fcm;
 
+    //
     // Logic variables
-    CollectionWindow collectionWindow;
+    //
 
+    CollectionWindow collectionWindow;
+    uint256 termEnd; // unix timestamp in seconds
+
+    //
     // Structs
+    //
+
     struct CollectionWindow {
         uint256 start; // unix timestamp in seconds
         uint256 end; // unix timestamp in seconds
     }
+
+    //
+    // Modifiers
+    //
 
     modifier isInCollectionWindow() {
         require(collectionWindowSet(), "Collection window not set");
@@ -47,6 +67,11 @@ contract FungibleVoltz {
 
     modifier canExecute() {
         require(isAfterCollectionWindow(), "Collection round has not finished");
+        _;
+    }
+
+    modifier canSettle() {
+        require(isAfterEndTerm(), "Not past term end");
         _;
     }
 
@@ -74,6 +99,10 @@ contract FungibleVoltz {
         collectionWindow = _collectionWindow; 
     }
 
+    //
+    // Modifier helpers
+    //
+
     function collectionWindowSet() internal returns (bool) {
         return collectionWindow.start != 0 && collectionWindow.end != 0;
     }
@@ -87,15 +116,13 @@ contract FungibleVoltz {
         return block.timestamp > collectionWindow.end;
     }
 
-    function execute() public canExecute {
-        variableRateToken.approve(address(fcm), 10 * 1e18);
-
-        fcm.initiateFullyCollateralisedFixedTakerSwap(10 * 1e18, MAX_SQRT_RATIO - 1);
+    function isAfterEndTerm() internal returns (bool) {
+        return block.timestamp >= termEnd;
     }
 
-    function settle() public {
-        fcm.settleTrader();
-    }
+    //
+    // Data functions
+    //
 
     // Returns factor in wei format to handle sub 1 numbers. TODO: Consider floating point arithmetic.
     function conversionFactor() public view returns (uint256) {
@@ -108,6 +135,26 @@ contract FungibleVoltz {
             / fungibleToken.balanceOf(address(this))
         );
     }
+
+    //
+    // Strategy functions
+    //
+
+    function execute() public canExecute {
+        variableRateToken.approve(address(fcm), 10 * 1e18);
+
+        fcm.initiateFullyCollateralisedFixedTakerSwap(10 * 1e18, MAX_SQRT_RATIO - 1);
+
+        termEnd = marginEngine.termEndTimestampWad() / 1e18;
+    }
+
+    function settle() public canSettle {
+        fcm.settleTrader();
+    }
+
+    //
+    // User functions
+    //
 
     function deposit() public isInCollectionWindow {
         // TODO

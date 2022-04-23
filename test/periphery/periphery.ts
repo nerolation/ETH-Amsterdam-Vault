@@ -991,7 +991,10 @@ describe("Periphery", async () => {
     });
 
     describe("Settle tests", () => {
-      it("executes a round and settles after maturity", async () => {
+      let balanceBeforeExecutionAUSDC: BigNumber;
+      let balanceBeforeExecutionUSDC: BigNumber;
+
+      beforeEach(async () => {
         // advance time by two days
         await advanceTimeAndBlock(
           BigNumber.from(86400).mul(BigNumber.from(2)),
@@ -1007,15 +1010,17 @@ describe("Periphery", async () => {
           marginDelta: toBn("100000"),
         });
 
-        const balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
+        balanceBeforeExecutionAUSDC = await mockAToken.balanceOf(
           fungibleVoltz.address
         );
-        const balanceBeforeExecutionUSDC = await token.balanceOf(
+        balanceBeforeExecutionUSDC = await token.balanceOf(
           fungibleVoltz.address
         );
 
         await fungibleVoltz.execute();
+      });
 
+      it("settles after maturity", async () => {
         const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
           fungibleVoltz.address
         );
@@ -1024,6 +1029,10 @@ describe("Periphery", async () => {
           balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)
         ).to.equal(toBn("10"));
 
+        // 5 days minimum need to pass until maturity as configured by test suite
+        // await advanceTimeAndBlock(consts.ONE_DAY.mul(BigNumber.from(5)), 4);
+
+        // Advance by one year to generate a good amount of yield
         await advanceTimeAndBlock(consts.ONE_YEAR, 4);
 
         await fungibleVoltz.settle();
@@ -1041,6 +1050,23 @@ describe("Periphery", async () => {
         expect(
           balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)
         ).to.equal(true);
+      });
+
+      it("canot settle before termEnd", async () => {
+        const balanceAfterExecutionAUSDC = await mockAToken.balanceOf(
+          fungibleVoltz.address
+        );
+
+        expect(
+          balanceBeforeExecutionAUSDC.sub(balanceAfterExecutionAUSDC)
+        ).to.equal(toBn("10"));
+
+        // 5 days minimum need to pass until maturity as configured by test suite
+        await advanceTimeAndBlock(consts.ONE_DAY.mul(BigNumber.from(4)), 4);
+
+        await expect(fungibleVoltz.settle()).to.be.revertedWith(
+          "Not past term end"
+        );
       });
     });
 
