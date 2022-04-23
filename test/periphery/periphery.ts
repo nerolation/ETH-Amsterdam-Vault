@@ -1014,7 +1014,8 @@ describe("Periphery", async () => {
       );
 
       expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
-      expect(balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)).to.be.true;
+      expect(balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)).to.be
+        .true;
     });
   });
 });
