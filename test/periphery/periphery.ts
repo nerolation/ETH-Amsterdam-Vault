@@ -146,10 +146,7 @@ describe("Periphery", async () => {
 
     // Deploy mock vUSDC token
     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock");
-    vUSDC = (await ERC20MockFactory.deploy(
-      "voltz USDC",
-      "vUSDC"
-    )) as ERC20Mock;
+    vUSDC = (await ERC20MockFactory.deploy("voltz USDC", "vUSDC")) as ERC20Mock;
 
     fungibleVoltz = (await fungibleVoltzFactory.deploy(
       mockAToken.address,
@@ -1003,58 +1000,47 @@ describe("Periphery", async () => {
           fungibleVoltz.address
         );
 
-        expect(balanceAfterSettlementAUSDC).to.equal(balanceBeforeExecutionAUSDC);
-        expect(balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)).to.be
-          .true;
+        expect(balanceAfterSettlementAUSDC).to.equal(
+          balanceBeforeExecutionAUSDC
+        );
+        expect(
+          balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)
+        ).to.equal(true);
       });
     });
 
     describe("Conversion factor tests", () => {
       it("calculates conversion factor to be 0 when no vUSDC minted", async () => {
-        expect(await fungibleVoltz.conversionFactor()).to.equal(BigNumber.from(0));
+        expect(await fungibleVoltz.conversionFactor()).to.equal(
+          BigNumber.from(0)
+        );
       });
 
       it("calculates conversion factor to be 1 when vUSDC is equal to amount of aUSDC", async () => {
-        await vUSDC.mint(
-          fungibleVoltz.address,
-          toBn("100"),
-        );
+        await vUSDC.mint(fungibleVoltz.address, toBn("100"));
 
-        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn('1'));
+        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn("1"));
 
         // Burn again to make test idempotent
-        await vUSDC.burn(
-          fungibleVoltz.address,
-          toBn("100"),
-        );
+        await vUSDC.burn(fungibleVoltz.address, toBn("100"));
       });
 
       it("calculates conversion factor to be 0.5 when vUSDC is equal to double the amount of aUSDC", async () => {
-        await vUSDC.mint(
-          fungibleVoltz.address,
-          toBn("200"),
+        await vUSDC.mint(fungibleVoltz.address, toBn("200"));
+
+        expect(await fungibleVoltz.conversionFactor()).to.equal(
+          BigNumber.from(toBn("0.5"))
         );
 
-        expect(await fungibleVoltz.conversionFactor()).to.equal(BigNumber.from(toBn('0.5')));
-
-        await vUSDC.burn(
-          fungibleVoltz.address,
-          toBn("200"),
-        );
+        await vUSDC.burn(fungibleVoltz.address, toBn("200"));
       });
 
       it("calculates conversion factor to be 2 when vUSDC is equal to half the amount of aUSDC", async () => {
-        await vUSDC.mint(
-          fungibleVoltz.address,
-          toBn("50"),
-        );
+        await vUSDC.mint(fungibleVoltz.address, toBn("50"));
 
-        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn('2'));
+        expect(await fungibleVoltz.conversionFactor()).to.equal(toBn("2"));
 
-        await vUSDC.burn(
-          fungibleVoltz.address,
-          toBn("50"),
-        );
+        await vUSDC.burn(fungibleVoltz.address, toBn("50"));
       });
     });
   });
