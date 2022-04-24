@@ -24,13 +24,22 @@ These strategies could be simulated for viability and parameterized into templat
 As it stands, join(T) contributes to the potential Voltz Protocol strategy space and facilitates new usage patterns for Voltz users. We show the potential for modifiable pooled fund strategies, with options for varying continuous investment cycles and risk swap strategies through our Proof-of-Concept of one type of risk strategy investment through pooled funds, tradeable as tokenized positions. 
 
 
-## How was join(T) made?
-* How did we build the project
-* What tech did we use
-* How do they interact
-* How did sponsor tech benefit our project?
-* Did you do anything “hacky” worth mentioning
-* How did you impress yourself with what your team built?
+## The development of join(T):
+### How did we build the project?
+We approached Voltz Protocol and our extension of it from two sides. One part of our team analyzed the mechanisms used in Voltz through the codebase, testing // running on testnet and connecting functions to the overall financial mechanism. The other part of the team tackled interest rate swaps and their use and variations in traditional finance. Our first task was to truly understand the risk swap positions and why users would want to enter them. After an initial, sometimes confused understanding of potential strategies, we sketched out possible integrations and the respective required touchpoints with users, contracts, and data sources. We refined our understanding of the swap strategies by testing various functions and their results. After more information on swap results and their implications on portfolios was discovered, mainly through helpfully provided information by the Voltz Protocol team, we were able to sketch out a rough but complete lifecycle of our investment. This allowed us to plan potential modifiers for additional strategy variability and a continuous investment option. 
+
+We were able to divide dev work on the ERC-20 token contract, the JointVaultStrategy Contract and integrations with Voltz and Aave for the yield bearing leg. 
+After completing and testing our minting and burning interactions, and the integration with Voltz components such as the Full Collateralization Module, we created a first working round of a full investment cycle, including settlement. 
+
+### What tech did we use?
+
+
+### How do they interact
+### How did sponsor tech benefit our project?
+### Did you do anything “hacky” worth mentioning
+
+### How were we impressed with our deliverable?
+We were able to use the available repositories and testnet contracts for entering into interest rate swap positions and settling our positions. Our project extends potential capabilities, while requiring the Voltz Protocol for most base mechanisms. join(T) wraps a Voltz Protocol position strategy and plugs into the mechanisms to operationalize the risk swap for the tokenized and pooled investment. Using the Full Collateralization Module we avoid risk stemming from undercollateralized risk swap positions and are able to let our user invest USDC and withdraw USDC, while exposing themselves to a larger potential of risk variations realized through specific strategies. 
 
 
 ## Happy Hackathon
