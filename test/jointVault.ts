@@ -242,27 +242,16 @@ describe("Periphery", async () => {
 
         expect(balanceAfterExecutionAUSDC).is.lt(balanceBeforeExecutionAUSDC);
 
-        // 5 days minimum need to pass until maturity as configured by test suite
-        // await advanceTimeAndBlock(consts.ONE_DAY.mul(BigNumber.from(5)), 4);
-
         // Advance by one year to generate a good amount of yield
         await advanceTimeAndBlock(consts.ONE_YEAR, 4);
 
         await jointVault.settle();
 
-        const balanceAfterSettlementAUSDC = await mockAToken.balanceOf(
-          jointVault.address
-        );
         const balanceAfterSettlementUSDC = await token.balanceOf(
           jointVault.address
         );
 
-        expect(balanceAfterSettlementAUSDC).to.equal(
-          balanceBeforeExecutionAUSDC
-        );
-        expect(
-          balanceAfterSettlementUSDC.gt(balanceBeforeExecutionUSDC)
-        ).to.equal(true);
+        expect(balanceAfterSettlementUSDC).to.equal(balanceBeforeExecutionUSDC);
       });
 
       it("cannot settle before termEnd", async () => {
@@ -353,6 +342,10 @@ describe("Periphery", async () => {
 
     describe("End to end scenario", () => {
       it("deposits, executes, settles, and withdraws", async () => {
+        //
+        // Begin first round
+        //
+
         // deposit
         await token.increaseAllowance(jointVault.address, toBn("1000"));
 
@@ -407,6 +400,7 @@ describe("Periphery", async () => {
 
         // fast forward one year with four blocks
         // await advanceTimeAndBlock(consts.ONE_YEAR.div(10), 4);
+        // fast forward 5 days with four blocks
         await advanceTimeAndBlock(consts.ONE_DAY.mul(5), 4);
 
         // settle
@@ -429,20 +423,52 @@ describe("Periphery", async () => {
 
         const JVUSDCBalance = await jvUSDC.balanceOf(wallet.address);
 
-        console.log("JVUSDCBalance before withdraw", JVUSDCBalance.toString());
+        console.log("JVUSDCBalance wallet balance before withdraw", JVUSDCBalance.toString());
+
+        console.log(
+          "USDC wallet balance before withdraw",
+          (await token.balanceOf(wallet.address)).toString()
+        );
+        console.log(
+          "USDC vault balance before withdraw",
+          (await token.balanceOf(jointVault.address)).toString()
+        );
 
         await jvUSDC.increaseAllowance(jointVault.address, JVUSDCBalance);
 
         await jointVault.withdraw(AUSDCToWithdraw);
 
         console.log(
-          "JVUSDCBalance after withdraw",
+          "JVUSDCBalance wallet balance after withdraw",
           (await jvUSDC.balanceOf(wallet.address)).toString()
         );
         console.log(
           "AUSDC wallet balance after withdraw",
           (await mockAToken.balanceOf(wallet.address)).toString()
         );
+        console.log(
+          "USDC wallet balance after withdraw",
+          (await token.balanceOf(wallet.address)).toString()
+        );
+        console.log(
+          "USDC vault balance after withdraw",
+          (await token.balanceOf(jointVault.address)).toString()
+        );
+
+        // deploy margin engine for next round
+        const marginEngineMasterTestFactory = await ethers.getContractFactory(
+          "TestMarginEngine"
+        );
+        const marginEngine =
+          (await marginEngineMasterTestFactory.deploy()) as TestMarginEngine;
+
+        // set margin engine for next round
+        await jointVault.setMarginEngine(marginEngine.address);
+
+        //
+        // Begin second round
+        //
+        
       });
     });
   });
