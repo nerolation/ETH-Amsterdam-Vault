@@ -1,0 +1,15 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+docs
+.DS_Store
+contracts/.DS_Store
+deployments/localhostDeployment.json
+deployments/localhost/
+*.txt
+#Hardhat files
+cache
+artifacts
+.txt
