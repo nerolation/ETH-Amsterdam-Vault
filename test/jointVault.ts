@@ -1,7 +1,7 @@
 import { ethers, waffle } from "hardhat";
 import { BigNumber, Wallet, Contract } from "ethers";
-import { expect } from "../shared/expect";
-import { metaFixture } from "../shared/fixtures";
+import { expect } from "./shared/expect";
+import { metaFixture } from "./shared/fixtures";
 import { toBn } from "evm-bn";
 import {
   ERC20Mock,
@@ -12,7 +12,7 @@ import {
   AaveFCM,
   MockAToken,
   MockAaveLendingPool,
-} from "../../typechain";
+} from "../typechain";
 import {
   APY_UPPER_MULTIPLIER,
   APY_LOWER_MULTIPLIER,
@@ -25,10 +25,10 @@ import {
   XI_LOWER,
   T_MAX,
   TICK_SPACING,
-} from "../shared/utilities";
-import { advanceTimeAndBlock, getCurrentTimestamp } from "../helpers/time";
-import { consts } from "../helpers/constants";
-const erc20ABI = require("../../artifacts/contracts/test/ERC20Mock.sol/ERC20Mock.json");
+} from "./shared/utilities";
+import { advanceTimeAndBlock, getCurrentTimestamp } from "./helpers/time";
+import { consts } from "./helpers/constants";
+const erc20ABI = require("../artifacts/contracts/test/ERC20Mock.sol/ERC20Mock.json");
 
 const createFixtureLoader = waffle.createFixtureLoader;
 
