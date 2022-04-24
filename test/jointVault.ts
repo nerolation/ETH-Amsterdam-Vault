@@ -375,16 +375,6 @@ describe("Periphery", async () => {
           4
         );
 
-        // provide liquidity into pool
-        // await periphery.mintOrBurn({
-        //   marginEngine: marginEngineTest.address,
-        //   tickLower: -TICK_SPACING,
-        //   tickUpper: TICK_SPACING,
-        //   notional: toBn("100000000"),
-        //   isMint: true,
-        //   marginDelta: toBn("100000000"),
-        // });
-
         await periphery.mintOrBurn({
           marginEngine: marginEngineTest.address,
           tickLower: -TICK_SPACING,
