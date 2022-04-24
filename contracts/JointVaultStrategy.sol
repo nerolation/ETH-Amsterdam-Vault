@@ -187,10 +187,13 @@ contract JointVaultStrategy {
     //
     // User functions
     //
-
+    
+    // @notice Initiate deposit to AAVE Lending Pool and receive jvUSDC
+    // @param  Amount of USDC to deposit to AAVE
     function deposit(uint256 amount) public isInCollectionWindow {
         require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
-
+        
+        
         bool success = underlyingToken.transferFrom(msg.sender, address(this), amount);        
         require(success);
 
@@ -208,17 +211,21 @@ contract JointVaultStrategy {
         uint mintAmount = amount * 10 ** 12;
         JVUSDC.adminMint(msg.sender, mintAmount);      
     }
-
+    
+    // @notice Initiate withdraw from AAVE Lending Pool and pay back jvUSDC
+    // @param  Amount of USDC to withdraw from AAVE
     function withdraw(uint256 amount) public isInCollectionWindow {
         uint burnAmount = amount * 10 ** 12;
-
+       
         require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
 
         bool success = JVUSDC.transferFrom(msg.sender, address(this), burnAmount);
         require(success);
-
+        
+        // Burn jvUSDC tokens from this contract
         JVUSDC.adminBurn(address(this), burnAmount);
-
+        
+        // Update payout amount
         uint256 finalAmount = cRate * amount / 100;        
         uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
         require(wa == finalAmount, "Not enough collateral;");
