@@ -9,7 +9,6 @@ import "./JointVaultUSDC.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
 
 contract JointVaultStrategy is Ownable {
     //
@@ -113,7 +112,7 @@ contract JointVaultStrategy is Ownable {
         collectionWindow = _collectionWindow;
 
         // initialize conversion rate
-        cRate = 100; 
+        cRate = 100000; 
     }
 
     //
@@ -141,16 +140,18 @@ contract JointVaultStrategy is Ownable {
     // Data functions
     //
 
-    // Returns factor in 2 decimal format to handle sub 1 numbers.
-    function conversionFactor() public view returns (uint256) {
+    // Returns factor in 5 decimal format to handle sub 1 numbers.
+    // TODO: remove hardcoded decimals
+    function conversionFactor() internal returns (uint256) {
         require(JVUSDC.totalSupply() != 0, "JVUSDC totalSupply is zero");
 
         return (
-            variableRateToken.balanceOf(address(this)) * 100 * 10 ** 12
+            // twelve decimals for aUSDC / jVUSDC decimal different + 5 from ctoken decimals
+            variableRateToken.balanceOf(address(this)) * 10 ** 17
             / JVUSDC.totalSupply()
         );
     }
-    
+ 
     // @notice Update conversion rate 
     function updateCRate() internal { // restriction needed
         cRate = conversionFactor();
@@ -207,54 +208,48 @@ contract JointVaultStrategy is Ownable {
     // TODO: remove hardcoded decimals
     function deposit(uint256 amount) public isInCollectionWindow {
         require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
-        
-        
-        bool success = underlyingToken.transferFrom(msg.sender, address(this), amount);        
-        require(success);
-        
+
+        require(underlyingToken.transferFrom(msg.sender, address(this), amount));
+ 
+        // Convert different denominations (6 <- 18)
+        uint mintAmount = amount * 10 ** 12;
+
         // Approve AAve to spend the underlying token
-        success = underlyingToken.approve(address(AAVE), amount);
-        require(success);
-        
+        require(underlyingToken.approve(address(AAVE), mintAmount));
+
         // Calculate deposit rate
-        uint256 finalAmount = amount / cRate * 100;
+        uint256 finalAmount = amount / cRate * 100000;
 
         // Deposit to Aave
         uint aave_t0 = variableRateToken.balanceOf(address(this));
-        AAVE.deposit(address(underlyingToken), finalAmount, address(this), 0);
+        AAVE.deposit(address(underlyingToken), amount, address(this), 0);
         uint aave_t1 = variableRateToken.balanceOf(address(this));
         require(aave_t1 - aave_t0 == amount, "Aave deposit failed;");
-        
-        // Convert different denominations (6 < 18)
-        uint mintAmount = amount * 10 ** 12;
+
         JVUSDC.adminMint(msg.sender, mintAmount);      
     }
-    
+
     // @notice Initiate withdraw from AAVE Lending Pool and pay back jvUSDC
     // @param  Amount of USDC to withdraw from AAVE
     // TODO: remove hardcoded decimals
     function withdraw(uint256 amount) public isInCollectionWindow {
-    
-        // Convert different denominations (6 < 18)
-        uint burnAmount = amount * 10 ** 12;
-       
+        // Convert different denominations (6 -> 18)
+        uint256 withdrawAmount = cRate * amount / 100000 / 10 ** 12;
+
         require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
 
         // Pull jvUSDC tokens from user
-        bool success = JVUSDC.transferFrom(msg.sender, address(this), burnAmount);
-        require(success);
-        
+        require(JVUSDC.transferFrom(msg.sender, address(this), amount));
+
         // Burn jvUSDC tokens from this contract
-        JVUSDC.adminBurn(address(this), burnAmount);
-        
+        JVUSDC.adminBurn(address(this), amount);
+
         // Update payout amount
-        uint256 finalAmount = cRate * amount / 100;        
-        uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
-        require(wa == finalAmount, "Not enough collateral;");
-        
+        uint256 wa = AAVE.withdraw(address(underlyingToken), withdrawAmount, address(this));
+        require(wa == withdrawAmount, "Not enough collateral;");
+
         // Transfer USDC back to the user
-        success = underlyingToken.transfer(msg.sender, finalAmount);
-        require(success);
+        require(underlyingToken.transfer(msg.sender, withdrawAmount));
     }
     
     // @notice Receive this contracts USDC balance

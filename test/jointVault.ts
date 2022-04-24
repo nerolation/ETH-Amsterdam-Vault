@@ -1,5 +1,5 @@
 import { ethers, waffle } from "hardhat";
-import { BigNumber, Wallet, Contract } from "ethers";
+import { BigNumber, Wallet, Contract, utils } from "ethers";
 import { expect } from "./shared/expect";
 import { metaFixture } from "./shared/fixtures";
 import { toBn } from "evm-bn";
@@ -12,6 +12,7 @@ import {
   AaveFCM,
   MockAToken,
   MockAaveLendingPool,
+  JointVaultUSDC,
 } from "../typechain";
 import {
   APY_UPPER_MULTIPLIER,
@@ -28,14 +29,16 @@ import {
 } from "./shared/utilities";
 import { advanceTimeAndBlock, getCurrentTimestamp } from "./helpers/time";
 import { consts } from "./helpers/constants";
-const erc20ABI = require("../artifacts/contracts/test/ERC20Mock.sol/ERC20Mock.json");
+import {formatUnits, parseUnits} from "@ethersproject/units";
+import {formatFixed} from "@ethersproject/bignumber";
+const erc20ABI = require("../artifacts/contracts/JointVaultUSDC.sol/JointVaultUSDC.json");
 
 const createFixtureLoader = waffle.createFixtureLoader;
 
-describe("Periphery", async () => {
+describe("JointVaultStrategy", async () => {
   let wallet: Wallet, other: Wallet;
   let token: ERC20Mock;
-  let jvUSDC: ERC20Mock;
+  let jvUSDC: JointVaultUSDC;
   let mockAToken: MockAToken;
   let marginEngineTest: TestMarginEngine;
   let periphery: Periphery;
@@ -43,6 +46,7 @@ describe("Periphery", async () => {
   let jointVault: JointVaultStrategy;
   let fcmTest: AaveFCM;
   let aaveLendingPool: MockAaveLendingPool;
+  let logBalances: () => Promise<void>;
 
   let loadFixture: ReturnType<typeof createFixtureLoader>;
 
@@ -147,7 +151,6 @@ describe("Periphery", async () => {
       fcmTest.address,
       marginEngineTest.address,
       aaveLendingPool.address,
-      // '0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe', // for kovan fork
       {
         start: currentTimestamp,
         end: currentTimestamp + 86400, // one day later
@@ -157,17 +160,49 @@ describe("Periphery", async () => {
     await jointVault.deployed();
 
     const jvUSDCAddress = await jointVault.JVUSDC();
-    jvUSDC = new Contract(jvUSDCAddress, erc20ABI.abi, wallet) as ERC20Mock;
+    jvUSDC = new Contract(jvUSDCAddress, erc20ABI.abi, wallet) as JointVaultUSDC;
 
     // mint aTokens
     await mockAToken.mint(
       jointVault.address,
-      toBn("100"),
+      toBn("100", 6),
       currentReserveNormalisedIncome
     );
+
+    logBalances = async () => {
+      console.log(
+        "\n\twallet AUSDC",
+        formatUnits((await mockAToken.balanceOf(wallet.address)).toString(), 6).toString(),
+        "\tJVUSDC",
+        formatUnits((await jvUSDC.balanceOf(wallet.address)).toString(), 18).toString(),
+        "\tUSDC",
+        formatUnits((await token.balanceOf(wallet.address)).toString(), 6).toString(),
+        "\n\tjointS AUSDC",
+        formatUnits((await mockAToken.balanceOf(jointVault.address)).toString(), 6).toString(),
+        "\tJVUSDC",
+        formatUnits((await jvUSDC.balanceOf(jointVault.address)).toString(), 18).toString(),
+        "\tUSDC",
+        formatUnits((await token.balanceOf(jointVault.address)).toString(), 6).toString(),
+      );
+    };
   });
 
   describe.only("JointVaultStrategy Tests", async () => {
+    describe("cRate tests", () => {
+      beforeEach(async () => {
+        await mockAToken.cheatBurn(jointVault.address, toBn("100", 6));
+      });
+
+      it("calculates cRate to be 1 when jvUSDC is equal to amount of aUSDC", async () => {
+        await token.increaseAllowance(jointVault.address, toBn("100", 6));
+        await jointVault.deposit(toBn("100", 6));
+
+        expect(await jointVault.cRate()).to.equal(
+          toBn("1", 5)
+        );
+      });
+    });
+
     describe("Execute tests", () => {
       it("executes a round", async () => {
         // advance time by two days
@@ -242,7 +277,7 @@ describe("Periphery", async () => {
 
         expect(balanceAfterExecutionAUSDC).is.lt(balanceBeforeExecutionAUSDC);
 
-        // Advance by one year to generate a good amount of yield
+        // advance by one year to generate a good amount of yield
         await advanceTimeAndBlock(consts.ONE_YEAR, 4);
 
         await jointVault.settle();
@@ -272,13 +307,13 @@ describe("Periphery", async () => {
 
     describe("Deposit tests", () => {
       it("can execute a deposit when in collection window", async () => {
-        await token.increaseAllowance(jointVault.address, toBn("1"));
+        await token.increaseAllowance(jointVault.address, toBn("1", 6));
 
-        await expect(jointVault.deposit(toBn("1"))).to.not.be.reverted;
+        await expect(jointVault.deposit(toBn("1", 6))).to.not.be.reverted;
       });
 
       it("cannot execute a deposit when not in collection window", async () => {
-        await token.increaseAllowance(jointVault.address, toBn("1"));
+        await token.increaseAllowance(jointVault.address, toBn("1", 6));
 
         // advance time by two days
         await advanceTimeAndBlock(
@@ -286,7 +321,7 @@ describe("Periphery", async () => {
           4
         );
 
-        await expect(jointVault.deposit(toBn("1"))).to.be.revertedWith(
+        await expect(jointVault.deposit(toBn("1", 6))).to.be.revertedWith(
           "Collection window not open"
         );
       });
@@ -300,10 +335,9 @@ describe("Periphery", async () => {
       });
 
       it("can execute a withdraw when in collection window", async () => {
-        await jvUSDC.increaseAllowance(jointVault.address, toBn("1", 18));
+        await jvUSDC.increaseAllowance(jointVault.address, toBn("1"));
 
-        // await jointVault.withdraw(toBn("1", 6));
-        await expect(jointVault.withdraw(toBn("1", 6))).to.not.be.reverted;
+        await expect(jointVault.withdraw(toBn("1"))).to.not.be.reverted;
       });
 
       it("cannot execute a withdraw when not in collection window", async () => {
@@ -319,48 +353,22 @@ describe("Periphery", async () => {
       });
     });
 
-    describe("Conversion factor tests", () => {
-      beforeEach(async () => {
-        await mockAToken.cheatBurn(jointVault.address, toBn("100"));
-      });
-
-      it("calculates conversion factor to be 0 when no jvUSDC minted", async () => {
-        await expect(jointVault.conversionFactor()).to.be.revertedWith(
-          "JVUSDC totalSupply is zero"
-        );
-      });
-
-      it("calculates conversion factor to be 100 when jvUSDC is equal to amount of aUSDC", async () => {
-        await token.increaseAllowance(jointVault.address, toBn("100"));
-        await jointVault.deposit(toBn("100"));
-
-        expect(await jointVault.conversionFactor()).to.equal(
-          BigNumber.from(100)
-        );
-      });
-    });
-
     describe("End to end scenario", () => {
       it("deposits, executes, settles, and withdraws", async () => {
-        //
-        // Begin first round
-        //
+        // Prepare token states for test
+        await token.increaseAllowance(jointVault.address, toBn("1000", 6));
+        await token.burn(wallet.address, toBn("2000000000000000000000", 6));
+        await mockAToken.cheatBurn(jointVault.address, toBn("100", 6));
 
-        // deposit
-        await token.increaseAllowance(jointVault.address, toBn("1000"));
+        await logBalances();
 
-        await mockAToken.cheatBurn(jointVault.address, toBn("100"));
+        const initialDepositAmount = toBn("1000", 6);
+        console.log(`\n\t-- deposit: USDC ${formatUnits(initialDepositAmount, 6)} --`);
+        await jointVault.deposit(initialDepositAmount);
 
-        console.log(
-          "balanceOf jointVault AUSDC before deposit",
-          (await mockAToken.balanceOf(jointVault.address)).toString()
-        );
-        console.log(
-          "balanceOf jointVault USDC before deposit",
-          (await token.balanceOf(jointVault.address)).toString()
-        );
+        await logBalances();
 
-        await jointVault.deposit(toBn("1000", 6));
+        console.log("\n\t-- advance time 2 days --");
 
         // advance time by two days and four blocks
         await advanceTimeAndBlock(
@@ -368,92 +376,55 @@ describe("Periphery", async () => {
           4
         );
 
+        console.log("\t-- provide liquidity to vAMM with USDC 10000 --");
+
         await periphery.mintOrBurn({
           marginEngine: marginEngineTest.address,
           tickLower: -TICK_SPACING,
           tickUpper: TICK_SPACING,
-          notional: toBn("10"),
+          notional: toBn("100000", 6),
           isMint: true,
-          marginDelta: toBn("10000"),
+          marginDelta: toBn("10000", 6),
         });
 
-        console.log(
-          "balanceOf jointVault AUSDC before execution",
-          (await mockAToken.balanceOf(jointVault.address)).toString()
-        );
-        console.log(
-          "balanceOf jointVault USDC before execution",
-          (await token.balanceOf(jointVault.address)).toString()
-        );
+        await logBalances();
 
         // execute strategy
+        console.log("\n\t-- execute --");
         await jointVault.execute();
 
-        console.log(
-          "balanceOf jointVault AUSDC before settlement",
-          (await mockAToken.balanceOf(jointVault.address)).toString()
-        );
-        console.log(
-          "balanceOf jointVault USDC before settlement",
-          (await token.balanceOf(jointVault.address)).toString()
-        );
+        await logBalances();
 
+        console.log("\n\t-- advance time 5 days --");
         // fast forward one year with four blocks
         // await advanceTimeAndBlock(consts.ONE_YEAR.div(10), 4);
         // fast forward 5 days with four blocks
         await advanceTimeAndBlock(consts.ONE_DAY.mul(5), 4);
 
         // settle
+        console.log("\t-- settle --");
         await jointVault.settle();
 
-        const AUSDCBalance = await mockAToken.balanceOf(jointVault.address);
-        const USDCBalance = await token.balanceOf(jointVault.address);
+        await logBalances();
 
-        console.log("balanceOf jointVault AUSDC", AUSDCBalance.toString());
-        console.log("balanceOf jointVault USDC", USDCBalance.toString());
+        const cRate = await jointVault.cRate();
 
-        const conversionFactor = await jointVault.conversionFactor();
-
-        const AUSDCToWithdraw = conversionFactor.mul(1000);
-        console.log("aUSDCToWithdraw", AUSDCToWithdraw.toString());
-        console.log(
-          "aUSDC wallet balance before withdraw",
-          mockAToken.balanceOf(wallet.address).toString()
-        );
+        const AUSDCToWithdraw = cRate.mul(initialDepositAmount).div(1e5);
 
         const JVUSDCBalance = await jvUSDC.balanceOf(wallet.address);
-
-        console.log("JVUSDCBalance wallet balance before withdraw", JVUSDCBalance.toString());
-
-        console.log(
-          "USDC wallet balance before withdraw",
-          (await token.balanceOf(wallet.address)).toString()
-        );
-        console.log(
-          "USDC vault balance before withdraw",
-          (await token.balanceOf(jointVault.address)).toString()
-        );
-
-        await jvUSDC.increaseAllowance(jointVault.address, JVUSDCBalance);
-
-        await jointVault.withdraw(AUSDCToWithdraw);
+        await jvUSDC.approve(jointVault.address, JVUSDCBalance);
 
         console.log(
-          "JVUSDCBalance wallet balance after withdraw",
-          (await jvUSDC.balanceOf(wallet.address)).toString()
+          "\taUSDCToWithdraw",
+          AUSDCToWithdraw.toString(),
+          "\tcRate",
+          cRate.toString()
         );
-        console.log(
-          "AUSDC wallet balance after withdraw",
-          (await mockAToken.balanceOf(wallet.address)).toString()
-        );
-        console.log(
-          "USDC wallet balance after withdraw",
-          (await token.balanceOf(wallet.address)).toString()
-        );
-        console.log(
-          "USDC vault balance after withdraw",
-          (await token.balanceOf(jointVault.address)).toString()
-        );
+
+        console.log(`\n\t-- withdraw using ${formatUnits(JVUSDCBalance.toString(), 18)} --`);
+        await jointVault.withdraw(initialDepositAmount.mul(1e12));
+
+        await logBalances();
       });
     });
   });
