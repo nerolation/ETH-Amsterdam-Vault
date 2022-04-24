@@ -150,7 +150,8 @@ contract JointVaultStrategy is Ownable {
             / JVUSDC.totalSupply()
         );
     }
-
+    
+    // @notice Update conversion rate 
     function updateCRate() internal { // restriction needed
         cRate = conversionFactor();
     }
@@ -159,6 +160,7 @@ contract JointVaultStrategy is Ownable {
     // Strategy functions
     //
 
+    // @notice Interact with Voltz 
     function execute() public canExecute {
         variableRateToken.approve(address(fcm), variableRateToken.balanceOf(address(this)));
 
