@@ -165,14 +165,16 @@ contract JointVaultStrategy {
 
         termEnd = marginEngine.termEndTimestampWad() / 1e18;
     }
-
+    // @notice Update window in which 
+    // @param  Amount of USDC to withdraw from AAVE
     function updateCollectionWindow() public {
         collectionWindow.start = termEnd;
         collectionWindow.end = termEnd + 86400; // termEnd + 1 day
     }
-
+    
+    // @notice Settle Strategie 
     function settle() public canSettle {
-        // get AUSDC and USDC from Voltz position
+        // Get AUSDC and USDC from Voltz position
         fcm.settleTrader();
 
         // Update cRate
@@ -196,18 +198,21 @@ contract JointVaultStrategy {
         
         bool success = underlyingToken.transferFrom(msg.sender, address(this), amount);        
         require(success);
-
+        
+        // Approve AAve to spend the underlying token
         success = underlyingToken.approve(address(AAVE), amount);
         require(success);
-
+        
+        // Calculate deposit rate
         uint256 finalAmount = amount / cRate * 100;
 
+        // Deposit to Aave
         uint aave_t0 = variableRateToken.balanceOf(address(this));
         AAVE.deposit(address(underlyingToken), finalAmount, address(this), 0);
-
         uint aave_t1 = variableRateToken.balanceOf(address(this));
         require(aave_t1 - aave_t0 == amount, "Aave deposit failed;");
-
+        
+        // Convert different denominations (6 < 18)
         uint mintAmount = amount * 10 ** 12;
         JVUSDC.adminMint(msg.sender, mintAmount);      
     }
