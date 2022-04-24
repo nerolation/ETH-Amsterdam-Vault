@@ -215,10 +215,13 @@ contract JointVaultStrategy {
     // @notice Initiate withdraw from AAVE Lending Pool and pay back jvUSDC
     // @param  Amount of USDC to withdraw from AAVE
     function withdraw(uint256 amount) public isInCollectionWindow {
+    
+        // Convert different denominations (6 < 18)
         uint burnAmount = amount * 10 ** 12;
        
         require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
 
+        // Pull jvUSDC tokens from user
         bool success = JVUSDC.transferFrom(msg.sender, address(this), burnAmount);
         require(success);
         
@@ -229,19 +232,24 @@ contract JointVaultStrategy {
         uint256 finalAmount = cRate * amount / 100;        
         uint256 wa = AAVE.withdraw(address(underlyingToken), finalAmount, address(this));
         require(wa == finalAmount, "Not enough collateral;");
-
+        
+        // Transfer USDC back to the user
         success = underlyingToken.transfer(msg.sender, finalAmount);
         require(success);
     }
-
+    
+    // @notice Receive this contracts USDC balance
     function contractBalanceUsdc() public view returns (uint256){
         return underlyingToken.balanceOf(address(this));      
     }
-
+    
+    // @notice Receive this contracts aUSDC balance
     function contractBalanceAUsdc() public view returns (uint256){
         return variableRateToken.balanceOf(address(this));      
     }
-
+    
+    // @notice Fallback that ignores calls from jvUSDC
+    // @notice Calls from jvUSDC happen when user deposits
     fallback() external {
         if (msg.sender == address(JVUSDC)) {
             revert("No known function targeted");
