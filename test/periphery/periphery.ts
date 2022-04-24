@@ -450,7 +450,7 @@ describe("Periphery", async () => {
           (await jvUSDC.balanceOf(wallet.address)).toString()
         );
         console.log(
-          "aUSDC wallet balance after withdraw",
+          "AUSDC wallet balance after withdraw",
           (await mockAToken.balanceOf(wallet.address)).toString()
         );
       });
