@@ -147,6 +147,7 @@ describe("Periphery", async () => {
       fcmTest.address,
       marginEngineTest.address,
       aaveLendingPool.address,
+      // '0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe', // for kovan fork
       {
         start: currentTimestamp,
         end: currentTimestamp + 86400, // one day later
@@ -351,7 +352,7 @@ describe("Periphery", async () => {
     });
 
     describe("End to end scenario", () => {
-      it.only("deposits, executes, settles, and withdraws", async () => {
+      it("deposits, executes, settles, and withdraws", async () => {
         // deposit
         await token.increaseAllowance(jointVault.address, toBn("1000"));
 
@@ -375,13 +376,22 @@ describe("Periphery", async () => {
         );
 
         // provide liquidity into pool
+        // await periphery.mintOrBurn({
+        //   marginEngine: marginEngineTest.address,
+        //   tickLower: -TICK_SPACING,
+        //   tickUpper: TICK_SPACING,
+        //   notional: toBn("100000000"),
+        //   isMint: true,
+        //   marginDelta: toBn("100000000"),
+        // });
+
         await periphery.mintOrBurn({
           marginEngine: marginEngineTest.address,
           tickLower: -TICK_SPACING,
           tickUpper: TICK_SPACING,
-          notional: toBn("100000000"),
+          notional: toBn("10"),
           isMint: true,
-          marginDelta: toBn("100000000"),
+          marginDelta: toBn("10000"),
         });
 
         console.log(
@@ -407,18 +417,41 @@ describe("Periphery", async () => {
 
         // fast forward one year with four blocks
         // await advanceTimeAndBlock(consts.ONE_YEAR.div(10), 4);
-        await advanceTimeAndBlock(consts.ONE_DAY.mul(6), 4);
+        await advanceTimeAndBlock(consts.ONE_DAY.mul(5), 4);
 
         // settle
         await jointVault.settle();
 
+        const AUSDCBalance = await mockAToken.balanceOf(jointVault.address);
+        const USDCBalance = await token.balanceOf(jointVault.address);
+
+        console.log("balanceOf jointVault AUSDC", AUSDCBalance.toString());
+        console.log("balanceOf jointVault USDC", USDCBalance.toString());
+
+        const conversionFactor = await jointVault.conversionFactor();
+
+        const AUSDCToWithdraw = conversionFactor.mul(1000);
+        console.log("aUSDCToWithdraw", AUSDCToWithdraw.toString());
         console.log(
-          "balanceOf jointVault AUSDC",
-          (await mockAToken.balanceOf(jointVault.address)).toString()
+          "aUSDC wallet balance before withdraw",
+          mockAToken.balanceOf(wallet.address).toString()
+        );
+
+        const JVUSDCBalance = await jvUSDC.balanceOf(wallet.address);
+
+        console.log("JVUSDCBalance before withdraw", JVUSDCBalance.toString());
+
+        await jvUSDC.increaseAllowance(jointVault.address, JVUSDCBalance);
+
+        await jointVault.withdraw(AUSDCToWithdraw);
+
+        console.log(
+          "JVUSDCBalance after withdraw",
+          (await jvUSDC.balanceOf(wallet.address)).toString()
         );
         console.log(
-          "balanceOf jointVault USDC",
-          (await token.balanceOf(jointVault.address)).toString()
+          "aUSDC wallet balance after withdraw",
+          (await mockAToken.balanceOf(wallet.address)).toString()
         );
       });
     });

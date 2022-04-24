@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 // near.ts
 // Custom method : being near means being within the expected variance determined by MAX_VARIANCE
 // https://github.com/EthWorks/Waffle/issues/512 (from here)
@@ -13,10 +15,6 @@ declare global {
       near(actual: BigNumber): void;
     }
   }
-}
-
-function max(x: BigNumber, y: BigNumber): BigNumber {
-  return x.gte(y) ? x : y;
 }
 
 export function near(chai: Chai.ChaiStatic): void {

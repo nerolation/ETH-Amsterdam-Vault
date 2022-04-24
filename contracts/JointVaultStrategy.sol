@@ -4,7 +4,6 @@ import "./interfaces/IPeriphery.sol";
 import "./interfaces/IFactory.sol";
 import "./interfaces/IMarginEngine.sol";
 import "./interfaces/fcms/IFCM.sol";
-import "./interfaces/rate_oracles/IRateOracle.sol";
 import "./interfaces/IAAVE.sol";
 import "./JointVaultUSDC.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -167,6 +166,11 @@ contract JointVaultStrategy {
         termEnd = marginEngine.termEndTimestampWad() / 1e18;
     }
 
+    function updateCollectionWindow() public {
+        collectionWindow.start = termEnd;
+        collectionWindow.end = termEnd + 86400; // termEnd + 1 day
+    }
+
     function settle() public canSettle {
         // get AUSDC and USDC from Voltz position
         fcm.settleTrader();
@@ -176,6 +180,8 @@ contract JointVaultStrategy {
         
         // Convert USDC to AUSDC
         // AAVE.deposit(address(underlyingToken), variableRateToken.balanceOf(address(this)), address(this), 0);
+
+        updateCollectionWindow();
     }
 
     //
@@ -207,7 +213,6 @@ contract JointVaultStrategy {
         uint burnAmount = amount * 10 ** 12;
 
         require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
-
 
         bool success = JVUSDC.transferFrom(msg.sender, address(this), burnAmount);
         require(success);

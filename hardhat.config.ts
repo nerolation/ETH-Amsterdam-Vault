@@ -62,15 +62,12 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    localhost: {
-      live: false,
-    },
     hardhat: {
-      // forking: {
-      //   url: "https://eth-mainnet.alchemyapi.io/v2/pNmKK8pTXHVggw2X4XPAOOuL9SllmxdZ",
-      //   blockNumber: 13270796,
-      // },
       allowUnlimitedContractSize: true,
+      // forking: {
+      //   enabled: true,
+      //   url: 'https://kovan.infura.io/v3/9b5cc69f389a45aea1240126eebc9f58'
+      // },
     },
     mainnet: {
       url: `${process.env.MAINNET_URL}`,

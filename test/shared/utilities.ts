@@ -5,7 +5,6 @@ import { BigintIsh } from "./constants";
 import { sqrt } from "./sqrt";
 import { div } from "./functions";
 import { toBn } from "evm-bn";
-import invariant from "tiny-invariant";
 
 export const ZERO_ADDRESS: string =
   "0x0000000000000000000000000000000000000000";
@@ -128,12 +127,12 @@ export function formatRay(value: BigNumber, decimals: number = 9): string {
   let s = value.toString();
   let result = "";
 
-  if (s[0] == "-") {
+  if (s[0] === "-") {
     result = "-";
     s = s.substring(1);
   }
 
-  let n = s.length;
+  const n = s.length;
   if (n < 28) {
     s = "0".repeat(28 - n) + s;
   }
