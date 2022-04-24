@@ -8,9 +8,10 @@ import "./interfaces/IAAVE.sol";
 import "./JointVaultUSDC.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
-contract JointVaultStrategy {
+contract JointVaultStrategy is Ownable {
     //
     // Constants
     //
@@ -177,13 +178,22 @@ contract JointVaultStrategy {
         // Get AUSDC and USDC from Voltz position
         fcm.settleTrader();
 
+        // Convert USDC to AUSDC
+        uint256 underlyingTokenBalance = underlyingToken.balanceOf(address(this));
+
+        underlyingToken.approve(address(AAVE), underlyingTokenBalance);
+        AAVE.deposit(address(underlyingToken), underlyingTokenBalance, address(this), 0);
+
         // Update cRate
         updateCRate();
-        
-        // Convert USDC to AUSDC
-        // AAVE.deposit(address(underlyingToken), variableRateToken.balanceOf(address(this)), address(this), 0);
 
+        // Update the collection window
         updateCollectionWindow();
+    }
+
+    // TODO: Do not require custodian
+    function setMarginEngine(address _marginEngine) public onlyOwner {
+        marginEngine = IMarginEngine(_marginEngine);
     }
 
     //
@@ -192,6 +202,7 @@ contract JointVaultStrategy {
     
     // @notice Initiate deposit to AAVE Lending Pool and receive jvUSDC
     // @param  Amount of USDC to deposit to AAVE
+    // TODO: remove hardcoded decimals
     function deposit(uint256 amount) public isInCollectionWindow {
         require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
         
@@ -219,6 +230,7 @@ contract JointVaultStrategy {
     
     // @notice Initiate withdraw from AAVE Lending Pool and pay back jvUSDC
     // @param  Amount of USDC to withdraw from AAVE
+    // TODO: remove hardcoded decimals
     function withdraw(uint256 amount) public isInCollectionWindow {
     
         // Convert different denominations (6 < 18)
