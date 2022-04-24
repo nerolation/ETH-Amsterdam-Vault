@@ -454,21 +454,6 @@ describe("Periphery", async () => {
           "USDC vault balance after withdraw",
           (await token.balanceOf(jointVault.address)).toString()
         );
-
-        // deploy margin engine for next round
-        const marginEngineMasterTestFactory = await ethers.getContractFactory(
-          "TestMarginEngine"
-        );
-        const marginEngine =
-          (await marginEngineMasterTestFactory.deploy()) as TestMarginEngine;
-
-        // set margin engine for next round
-        await jointVault.setMarginEngine(marginEngine.address);
-
-        //
-        // Begin second round
-        //
-        
       });
     });
   });
