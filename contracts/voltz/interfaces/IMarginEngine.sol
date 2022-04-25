@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pragma solidity =0.8.9;
+
 import "./IVAMM.sol";
 import "./IPositionStructs.sol";
 import "../core_libraries/Position.sol";
@@ -8,7 +9,7 @@ import "./rate_oracles/IRateOracle.sol";
 import "./fcms/IFCM.sol";
 import "./IFactory.sol";
 import "./IERC20Minimal.sol";
-import "contracts/utils/CustomErrors.sol";
+import "../utils/CustomErrors.sol";
 
 interface IMarginEngine is IPositionStructs, CustomErrors {
     // structs

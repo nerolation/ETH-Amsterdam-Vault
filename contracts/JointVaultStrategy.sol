@@ -1,10 +1,10 @@
 pragma solidity =0.8.9;
 
-import "./interfaces/IPeriphery.sol";
-import "./interfaces/IFactory.sol";
-import "./interfaces/IMarginEngine.sol";
-import "./interfaces/fcms/IFCM.sol";
-import "./interfaces/IAAVE.sol";
+import "./voltz/interfaces/IPeriphery.sol";
+import "./voltz/interfaces/IFactory.sol";
+import "./voltz/interfaces/IMarginEngine.sol";
+import "./voltz/interfaces/fcms/IFCM.sol";
+import "./voltz/interfaces/IAAVE.sol";
 import "./JointVaultUSDC.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";

@@ -2,6 +2,8 @@
 
 pragma solidity =0.8.9;
 
+import "../rate_oracles/IRateOracle.sol";
+import "../IVAMM.sol";
 import "../IMarginEngine.sol";
 import "../../utils/CustomErrors.sol";
 import "../IERC20Minimal.sol";

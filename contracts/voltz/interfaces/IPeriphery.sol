@@ -4,7 +4,7 @@ pragma solidity =0.8.9;
 
 import "../interfaces/IMarginEngine.sol";
 import "../interfaces/IVAMM.sol";
-import "contracts/utils/CustomErrors.sol";
+import "../utils/CustomErrors.sol";
 
 interface IPeriphery is CustomErrors {
     // events

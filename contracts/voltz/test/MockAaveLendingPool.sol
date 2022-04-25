@@ -3,10 +3,9 @@
 pragma solidity =0.8.9;
 import "../interfaces/aave/IAaveV2LendingPool.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
-import "../aave/AaveDataTypes.sol";
+import "../../aave/AaveDataTypes.sol";
 import "../interfaces/aave/IAToken.sol";
 import "../utils/Printer.sol";
-import "hardhat/console.sol";
 
 /// @notice This Mock Aave pool can be used in 3 ways
 /// - change the rate to a fixed value (`setReserveNormalizedIncome`)

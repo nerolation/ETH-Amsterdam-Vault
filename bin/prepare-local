@@ -1,7 +1,0 @@
-#!/bin/bash
-
-npx hardhat createIrsInstance --network localhost --rate-oracle MockTokenRateOracle
-
-cd ../fungible-voltz-hh && npx hardhat run --network localhost scripts/deploy.js
-
-cd ../voltz-core && npx hardhat mintTestTokens --network localhost --beneficiaries 0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB --amount 100000000000000000000000
