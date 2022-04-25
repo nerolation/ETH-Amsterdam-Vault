@@ -169,6 +169,7 @@ contract JointVaultStrategy is Ownable {
 
         termEnd = marginEngine.termEndTimestampWad() / 1e18;
     }
+
     // @notice Update window in which 
     // @param  Amount of USDC to withdraw from AAVE
     function updateCollectionWindow() public {

@@ -125,8 +125,6 @@ describe("JointVaultStrategy", async () => {
       .connect(other)
       .approve(periphery.address, BigNumber.from(10).pow(27));
 
-    // Deploy JointVaultStrategy contract
-
     await token.mint(other.address, BigNumber.from(10).pow(27));
     await token
       .connect(other)
@@ -186,7 +184,7 @@ describe("JointVaultStrategy", async () => {
     };
   });
 
-  describe.only("JointVaultStrategy Tests", async () => {
+  describe("JointVaultStrategy Tests", async () => {
     describe("cRate tests", () => {
       beforeEach(async () => {
         await mockAToken.cheatBurn(jointVault.address, toBn("100", 6));
@@ -424,6 +422,35 @@ describe("JointVaultStrategy", async () => {
         await jointVault.withdraw(initialDepositAmount.mul(1e12));
 
         await logBalances();
+
+        const margin_engine_params = {
+          apyUpperMultiplierWad: APY_UPPER_MULTIPLIER,
+          apyLowerMultiplierWad: APY_LOWER_MULTIPLIER,
+          minDeltaLMWad: MIN_DELTA_LM,
+          minDeltaIMWad: MIN_DELTA_IM,
+          sigmaSquaredWad: SIGMA_SQUARED,
+          alphaWad: ALPHA,
+          betaWad: BETA,
+          xiUpperWad: XI_UPPER,
+          xiLowerWad: XI_LOWER,
+          tMaxWad: T_MAX,
+
+          devMulLeftUnwindLMWad: toBn("0.5"),
+          devMulRightUnwindLMWad: toBn("0.5"),
+          devMulLeftUnwindIMWad: toBn("0.8"),
+          devMulRightUnwindIMWad: toBn("0.8"),
+
+          fixedRateDeviationMinLeftUnwindLMWad: toBn("0.1"),
+          fixedRateDeviationMinRightUnwindLMWad: toBn("0.1"),
+
+          fixedRateDeviationMinLeftUnwindIMWad: toBn("0.3"),
+          fixedRateDeviationMinRightUnwindIMWad: toBn("0.3"),
+
+          gammaWad: toBn("1.0"),
+          minMarginToIncentiviseLiquidators: 0,
+        };
+
+        await marginEngineTest.setMarginCalculatorParameters(margin_engine_params);
       });
     });
   });
