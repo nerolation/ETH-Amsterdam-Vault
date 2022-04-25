@@ -1,5 +1,5 @@
 import { ethers, waffle } from "hardhat";
-import { BigNumber, Wallet, Contract, utils } from "ethers";
+import { BigNumber, Wallet, Contract } from "ethers";
 import { expect } from "./shared/expect";
 import { metaFixture } from "./shared/fixtures";
 import { toBn } from "evm-bn";
