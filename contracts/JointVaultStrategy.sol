@@ -112,7 +112,7 @@ contract JointVaultStrategy is Ownable {
         collectionWindow = _collectionWindow;
 
         // initialize conversion rate
-        cRate = 100000; 
+        cRate = 1e18; 
     }
 
     //
@@ -146,8 +146,8 @@ contract JointVaultStrategy is Ownable {
         require(JVUSDC.totalSupply() != 0, "JVUSDC totalSupply is zero");
 
         return (
-            // twelve decimals for aUSDC / jVUSDC decimal different + 5 from ctoken decimals
-            variableRateToken.balanceOf(address(this)) * 10 ** 17
+            // twelve decimals for aUSDC / jVUSDC decimal different + 18 from ctoken decimals
+            variableRateToken.balanceOf(address(this)) * 10 ** 30
             / JVUSDC.totalSupply()
         );
     }
@@ -207,18 +207,16 @@ contract JointVaultStrategy is Ownable {
     // @param  Amount of USDC to deposit to AAVE
     // TODO: remove hardcoded decimals
     function deposit(uint256 amount) public isInCollectionWindow {
-        require(underlyingToken.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
-
-        require(underlyingToken.transferFrom(msg.sender, address(this), amount));
+        underlyingToken.transferFrom(msg.sender, address(this), amount);
  
         // Convert different denominations (6 <- 18)
-        uint mintAmount = amount * 10 ** 12;
+        uint mintAmount = amount * 1e12;
 
         // Approve AAve to spend the underlying token
-        require(underlyingToken.approve(address(AAVE), mintAmount));
+        underlyingToken.approve(address(AAVE), mintAmount);
 
         // Calculate deposit rate
-        uint256 finalAmount = amount / cRate * 100000;
+        uint256 finalAmount = amount / cRate * 1e18;
 
         // Deposit to Aave
         uint aave_t0 = variableRateToken.balanceOf(address(this));
@@ -230,16 +228,14 @@ contract JointVaultStrategy is Ownable {
     }
 
     // @notice Initiate withdraw from AAVE Lending Pool and pay back jvUSDC
-    // @param  Amount of USDC to withdraw from AAVE
+    // @param  Amount of yvUSDC to redeem as USDC
     // TODO: remove hardcoded decimals
     function withdraw(uint256 amount) public isInCollectionWindow {
         // Convert different denominations (6 -> 18)
-        uint256 withdrawAmount = cRate * amount / 100000 / 10 ** 12;
-
-        require(JVUSDC.allowance(msg.sender, address(this)) >= amount, "Not enough allowance;");
+        uint256 withdrawAmount = cRate * amount / 1e30;
 
         // Pull jvUSDC tokens from user
-        require(JVUSDC.transferFrom(msg.sender, address(this), amount));
+        JVUSDC.transferFrom(msg.sender, address(this), amount);
 
         // Burn jvUSDC tokens from this contract
         JVUSDC.adminBurn(address(this), amount);
@@ -249,19 +245,19 @@ contract JointVaultStrategy is Ownable {
         require(wa == withdrawAmount, "Not enough collateral;");
 
         // Transfer USDC back to the user
-        require(underlyingToken.transfer(msg.sender, withdrawAmount));
+        underlyingToken.transfer(msg.sender, withdrawAmount);
     }
-    
+
     // @notice Receive this contracts USDC balance
     function contractBalanceUsdc() public view returns (uint256){
         return underlyingToken.balanceOf(address(this));      
     }
-    
+
     // @notice Receive this contracts aUSDC balance
     function contractBalanceAUsdc() public view returns (uint256){
         return variableRateToken.balanceOf(address(this));      
     }
-    
+
     // @notice Fallback that ignores calls from jvUSDC
     // @notice Calls from jvUSDC happen when user deposits
     fallback() external {

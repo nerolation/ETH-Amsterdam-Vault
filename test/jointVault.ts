@@ -29,8 +29,7 @@ import {
 } from "./shared/utilities";
 import { advanceTimeAndBlock, getCurrentTimestamp } from "./helpers/time";
 import { consts } from "./helpers/constants";
-import {formatUnits, parseUnits} from "@ethersproject/units";
-import {formatFixed} from "@ethersproject/bignumber";
+import {formatUnits} from "@ethersproject/units";
 const erc20ABI = require("../artifacts/contracts/JointVaultUSDC.sol/JointVaultUSDC.json");
 
 const createFixtureLoader = waffle.createFixtureLoader;
@@ -198,7 +197,7 @@ describe("JointVaultStrategy", async () => {
         await jointVault.deposit(toBn("100", 6));
 
         expect(await jointVault.cRate()).to.equal(
-          toBn("1", 5)
+          toBn("1", 18)
         );
       });
     });
@@ -336,7 +335,7 @@ describe("JointVaultStrategy", async () => {
 
       it("can execute a withdraw when in collection window", async () => {
         await jvUSDC.increaseAllowance(jointVault.address, toBn("1"));
-
+        
         await expect(jointVault.withdraw(toBn("1"))).to.not.be.reverted;
       });
 
@@ -409,7 +408,7 @@ describe("JointVaultStrategy", async () => {
 
         const cRate = await jointVault.cRate();
 
-        const AUSDCToWithdraw = cRate.mul(initialDepositAmount).div(1e5);
+        const AUSDCToWithdraw = cRate.mul(initialDepositAmount).div(BigNumber.from(10).pow(30));
 
         const JVUSDCBalance = await jvUSDC.balanceOf(wallet.address);
         await jvUSDC.approve(jointVault.address, JVUSDCBalance);
