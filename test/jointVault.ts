@@ -30,7 +30,7 @@ import {
 import { advanceTimeAndBlock, getCurrentTimestamp } from "./helpers/time";
 import { consts } from "./helpers/constants";
 import { formatUnits } from "@ethersproject/units";
-const erc20ABI = require("../artifacts/contracts/JointVaultUSDC.sol/JointVaultUSDC.json");
+import { abi as ERC20ABI } from "../artifacts/contracts/JointVaultUSDC.sol/JointVaultUSDC.json";
 
 const createFixtureLoader = waffle.createFixtureLoader;
 
@@ -157,7 +157,7 @@ describe("JointVaultStrategy", async () => {
     const jvUSDCAddress = await jointVault.JVUSDC();
     jvUSDC = new Contract(
       jvUSDCAddress,
-      erc20ABI.abi,
+      ERC20ABI,
       wallet
     ) as JointVaultUSDC;
 
