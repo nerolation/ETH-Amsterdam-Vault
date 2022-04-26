@@ -57,6 +57,7 @@
   "dependencies": {
     "@aave/protocol-js": "^4.3.0",
     "@aave/protocol-v2": "^1.0.1",
+    "@ethersproject/units": "^5.6.0",
     "@openzeppelin/contracts": "^4.4.0",
     "@openzeppelin/contracts-ethereum-package": "^2.2.3",
     "@openzeppelin/contracts-upgradeable": "^4.4.2",

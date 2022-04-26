@@ -29,7 +29,7 @@ import {
 } from "./shared/utilities";
 import { advanceTimeAndBlock, getCurrentTimestamp } from "./helpers/time";
 import { consts } from "./helpers/constants";
-import {formatUnits} from "@ethersproject/units";
+import { formatUnits } from "@ethersproject/units";
 const erc20ABI = require("../artifacts/contracts/JointVaultUSDC.sol/JointVaultUSDC.json");
 
 const createFixtureLoader = waffle.createFixtureLoader;
@@ -157,7 +157,11 @@ describe("JointVaultStrategy", async () => {
     await jointVault.deployed();
 
     const jvUSDCAddress = await jointVault.JVUSDC();
-    jvUSDC = new Contract(jvUSDCAddress, erc20ABI.abi, wallet) as JointVaultUSDC;
+    jvUSDC = new Contract(
+      jvUSDCAddress,
+      erc20ABI.abi,
+      wallet
+    ) as JointVaultUSDC;
 
     // mint aTokens
     await mockAToken.mint(
@@ -169,17 +173,35 @@ describe("JointVaultStrategy", async () => {
     logBalances = async () => {
       console.log(
         "\n\twallet AUSDC",
-        formatUnits((await mockAToken.balanceOf(wallet.address)).toString(), 6).toString(),
+        formatUnits(
+          (await mockAToken.balanceOf(wallet.address)).toString(),
+          6
+        ).toString(),
         "\tJVUSDC",
-        formatUnits((await jvUSDC.balanceOf(wallet.address)).toString(), 18).toString(),
+        formatUnits(
+          (await jvUSDC.balanceOf(wallet.address)).toString(),
+          18
+        ).toString(),
         "\tUSDC",
-        formatUnits((await token.balanceOf(wallet.address)).toString(), 6).toString(),
+        formatUnits(
+          (await token.balanceOf(wallet.address)).toString(),
+          6
+        ).toString(),
         "\n\tjointS AUSDC",
-        formatUnits((await mockAToken.balanceOf(jointVault.address)).toString(), 6).toString(),
+        formatUnits(
+          (await mockAToken.balanceOf(jointVault.address)).toString(),
+          6
+        ).toString(),
         "\tJVUSDC",
-        formatUnits((await jvUSDC.balanceOf(jointVault.address)).toString(), 18).toString(),
+        formatUnits(
+          (await jvUSDC.balanceOf(jointVault.address)).toString(),
+          18
+        ).toString(),
         "\tUSDC",
-        formatUnits((await token.balanceOf(jointVault.address)).toString(), 6).toString(),
+        formatUnits(
+          (await token.balanceOf(jointVault.address)).toString(),
+          6
+        ).toString()
       );
     };
   });
@@ -194,9 +216,7 @@ describe("JointVaultStrategy", async () => {
         await token.increaseAllowance(jointVault.address, toBn("100", 6));
         await jointVault.deposit(toBn("100", 6));
 
-        expect(await jointVault.cRate()).to.equal(
-          toBn("1", 18)
-        );
+        expect(await jointVault.cRate()).to.equal(toBn("1", 18));
       });
     });
 
@@ -333,7 +353,7 @@ describe("JointVaultStrategy", async () => {
 
       it("can execute a withdraw when in collection window", async () => {
         await jvUSDC.increaseAllowance(jointVault.address, toBn("1"));
-        
+
         await expect(jointVault.withdraw(toBn("1"))).to.not.be.reverted;
       });
 
@@ -360,7 +380,9 @@ describe("JointVaultStrategy", async () => {
         await logBalances();
 
         const initialDepositAmount = toBn("1000", 6);
-        console.log(`\n\t-- deposit: USDC ${formatUnits(initialDepositAmount, 6)} --`);
+        console.log(
+          `\n\t-- deposit: USDC ${formatUnits(initialDepositAmount, 6)} --`
+        );
         await jointVault.deposit(initialDepositAmount);
 
         await logBalances();
@@ -406,7 +428,9 @@ describe("JointVaultStrategy", async () => {
 
         const cRate = await jointVault.cRate();
 
-        const AUSDCToWithdraw = cRate.mul(initialDepositAmount).div(BigNumber.from(10).pow(30));
+        const AUSDCToWithdraw = cRate
+          .mul(initialDepositAmount)
+          .div(BigNumber.from(10).pow(30));
 
         const JVUSDCBalance = await jvUSDC.balanceOf(wallet.address);
         await jvUSDC.approve(jointVault.address, JVUSDCBalance);
@@ -418,7 +442,12 @@ describe("JointVaultStrategy", async () => {
           cRate.toString()
         );
 
-        console.log(`\n\t-- withdraw using ${formatUnits(JVUSDCBalance.toString(), 18)} --`);
+        console.log(
+          `\n\t-- withdraw using ${formatUnits(
+            JVUSDCBalance.toString(),
+            18
+          )} --`
+        );
         await jointVault.withdraw(initialDepositAmount.mul(1e12));
 
         await logBalances();
@@ -450,7 +479,9 @@ describe("JointVaultStrategy", async () => {
           minMarginToIncentiviseLiquidators: 0,
         };
 
-        await marginEngineTest.setMarginCalculatorParameters(margin_engine_params);
+        await marginEngineTest.setMarginCalculatorParameters(
+          margin_engine_params
+        );
       });
     });
   });
