@@ -214,7 +214,7 @@ contract JointVaultStrategy is Ownable {
         uint mintAmount = amount * 1e12;
 
         // Approve AAve to spend the underlying token
-        underlyingToken.approve(address(AAVE), mintAmount);
+        underlyingToken.approve(address(AAVE), amount);
 
         // Calculate deposit rate
         uint256 finalAmount = amount / cRate * 1e18;
