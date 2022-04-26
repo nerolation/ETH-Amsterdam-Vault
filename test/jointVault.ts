@@ -40,6 +40,7 @@ describe("JointVaultStrategy", async () => {
   let jvUSDC: JointVaultUSDC;
   let mockAToken: MockAToken;
   let marginEngineTest: TestMarginEngine;
+  let marginEngineTest1: TestMarginEngine;
   let periphery: Periphery;
   let factory: Factory;
   let jointVault: JointVaultStrategy;
@@ -58,6 +59,7 @@ describe("JointVaultStrategy", async () => {
     ({
       token,
       marginEngineTest,
+      marginEngineTest1,
       factory,
       fcmTest,
       mockAToken,
@@ -450,36 +452,10 @@ describe("JointVaultStrategy", async () => {
 
         await logBalances();
 
-        const margin_engine_params = {
-          apyUpperMultiplierWad: APY_UPPER_MULTIPLIER,
-          apyLowerMultiplierWad: APY_LOWER_MULTIPLIER,
-          minDeltaLMWad: MIN_DELTA_LM,
-          minDeltaIMWad: MIN_DELTA_IM,
-          sigmaSquaredWad: SIGMA_SQUARED,
-          alphaWad: ALPHA,
-          betaWad: BETA,
-          xiUpperWad: XI_UPPER,
-          xiLowerWad: XI_LOWER,
-          tMaxWad: T_MAX,
+        // roll funds over into the next round
 
-          devMulLeftUnwindLMWad: toBn("0.5"),
-          devMulRightUnwindLMWad: toBn("0.5"),
-          devMulLeftUnwindIMWad: toBn("0.8"),
-          devMulRightUnwindIMWad: toBn("0.8"),
-
-          fixedRateDeviationMinLeftUnwindLMWad: toBn("0.1"),
-          fixedRateDeviationMinRightUnwindLMWad: toBn("0.1"),
-
-          fixedRateDeviationMinLeftUnwindIMWad: toBn("0.3"),
-          fixedRateDeviationMinRightUnwindIMWad: toBn("0.3"),
-
-          gammaWad: toBn("1.0"),
-          minMarginToIncentiviseLiquidators: 0,
-        };
-
-        await marginEngineTest.setMarginCalculatorParameters(
-          margin_engine_params
-        );
+        console.log('marginEngineTest', marginEngineTest.address);
+        console.log('marginEngineTest1', marginEngineTest1.address);
       });
     });
   });

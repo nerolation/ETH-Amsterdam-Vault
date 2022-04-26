@@ -197,6 +197,9 @@ interface MetaFixture {
   marginEngineTest: TestMarginEngine;
   vammTest: TestVAMM;
   fcmTest: AaveFCM;
+  marginEngineTest1: TestMarginEngine;
+  vammTest1: TestVAMM;
+  fcmTest1: AaveFCM;
 }
 
 export const metaFixture = async function (): Promise<MetaFixture> {
@@ -248,6 +251,8 @@ export const metaFixture = async function (): Promise<MetaFixture> {
     UNDERLYING_YIELD_BEARING_PROTOCOL_ID
   );
 
+  // first IRS instance
+
   // deploy a margin engine & vamm
   const deployTrx = await factory.deployIrsInstance(
     token.address,
@@ -264,7 +269,6 @@ export const metaFixture = async function (): Promise<MetaFixture> {
       "IrsInstance log not found. Has it moved to a different position in the array?"
     );
   }
-  // console.log("log", log);
   const marginEngineAddress = log.args.marginEngine;
   const vammAddress = log.args.vamm;
   const fcmAddress = log.args.fcm;
@@ -282,6 +286,42 @@ export const metaFixture = async function (): Promise<MetaFixture> {
   const fcmTestFactory = await ethers.getContractFactory("AaveFCM");
   const fcmTest = fcmTestFactory.attach(fcmAddress) as AaveFCM;
 
+  // second IRS instance
+
+  // deploy a margin engine & vamm
+  const deployTrx1 = await factory.deployIrsInstance(
+    token.address,
+    rateOracleTest.address,
+    termStartTimestampBN,
+    termEndTimestampBN,
+    TICK_SPACING
+  );
+  const receiptLogs1 = (await deployTrx1.wait()).logs;
+  // console.log("receiptLogs", receiptLogs);
+  const log1 = factory.interface.parseLog(receiptLogs1[receiptLogs1.length - 3]);
+  if (log1.name !== "IrsInstance") {
+    throw Error(
+      "IrsInstance log not found. Has it moved to a different position in the array?"
+    );
+  }
+  // console.log("log", log);
+  const marginEngineAddress1 = log1.args.marginEngine;
+  const vammAddress1 = log1.args.vamm;
+  const fcmAddress1 = log1.args.fcm;
+
+  const marginEngineTestFactory1 = await ethers.getContractFactory(
+    "TestMarginEngine"
+  );
+  const marginEngineTest1 = marginEngineTestFactory1.attach(
+    marginEngineAddress1
+  ) as TestMarginEngine;
+
+  const vammTestFactory1 = await ethers.getContractFactory("TestVAMM");
+  const vammTest1 = vammTestFactory1.attach(vammAddress1) as TestVAMM;
+
+  const fcmTestFactory1 = await ethers.getContractFactory("AaveFCM");
+  const fcmTest1 = fcmTestFactory1.attach(fcmAddress1) as AaveFCM;
+
   return {
     factory,
     vammMasterTest,
@@ -295,5 +335,8 @@ export const metaFixture = async function (): Promise<MetaFixture> {
     marginEngineTest,
     vammTest,
     fcmTest,
+    marginEngineTest1,
+    vammTest1,
+    fcmTest1,
   };
 };
