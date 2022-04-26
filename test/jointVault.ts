@@ -107,7 +107,6 @@ describe("JointVaultStrategy", async () => {
 
     // deploy the periphery
     const peripheryFactory = await ethers.getContractFactory("Periphery");
-
     periphery = (await peripheryFactory.deploy()) as Periphery;
 
     // set the periphery in the factory
@@ -116,7 +115,6 @@ describe("JointVaultStrategy", async () => {
       .withArgs(periphery.address);
 
     // approve the periphery to spend tokens on wallet's behalf
-
     await token
       .connect(wallet)
       .approve(periphery.address, BigNumber.from(10).pow(27));
