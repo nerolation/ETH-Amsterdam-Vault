@@ -288,12 +288,15 @@ export const metaFixture = async function (): Promise<MetaFixture> {
 
   // second IRS instance
 
+  const termStartTimestampBN1 = termStartTimestampBN.add(toBn(consts.ONE_DAY.mul(4).toString()));
+  const termEndTimestampBN1 = termEndTimestampBN.add(toBn(consts.ONE_DAY.mul(4).toString()));
+
   // deploy a margin engine & vamm
   const deployTrx1 = await factory.deployIrsInstance(
     token.address,
     rateOracleTest.address,
-    termStartTimestampBN,
-    termEndTimestampBN,
+    termStartTimestampBN1,
+    termEndTimestampBN1,
     TICK_SPACING
   );
   const receiptLogs1 = (await deployTrx1.wait()).logs;

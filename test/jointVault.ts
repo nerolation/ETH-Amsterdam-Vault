@@ -45,6 +45,7 @@ describe("JointVaultStrategy", async () => {
   let factory: Factory;
   let jointVault: JointVaultStrategy;
   let fcmTest: AaveFCM;
+  let fcmTest1: AaveFCM;
   let aaveLendingPool: MockAaveLendingPool;
   let logBalances: () => Promise<void>;
 
@@ -62,6 +63,7 @@ describe("JointVaultStrategy", async () => {
       marginEngineTest1,
       factory,
       fcmTest,
+      fcmTest1,
       mockAToken,
       aaveLendingPool,
     } = await loadFixture(metaFixture));
@@ -106,6 +108,7 @@ describe("JointVaultStrategy", async () => {
     };
 
     await marginEngineTest.setMarginCalculatorParameters(margin_engine_params);
+    await marginEngineTest1.setMarginCalculatorParameters(margin_engine_params);
 
     // deploy the periphery
     const peripheryFactory = await ethers.getContractFactory("Periphery");
@@ -451,11 +454,126 @@ describe("JointVaultStrategy", async () => {
         await jointVault.withdraw(initialDepositAmount.mul(1e12));
 
         await logBalances();
+      });
+
+      it("deposits, executes, settles, sets new margin engine, executes, settles, withdraws", async () => {
+        // Prepare token states for test
+        await token.increaseAllowance(jointVault.address, toBn("1000", 6));
+        await token.burn(wallet.address, toBn("2000000000000000000000", 6));
+        await mockAToken.cheatBurn(jointVault.address, toBn("100", 6));
+
+        await logBalances();
+
+        const initialDepositAmount = toBn("1000", 6);
+        console.log(
+          `\n\t-- deposit: USDC ${formatUnits(initialDepositAmount, 6)} --`
+        );
+        await jointVault.deposit(initialDepositAmount);
+
+        await logBalances();
+
+        console.log("\n\t-- advance time 2 days --");
+
+        // advance time by two days and four blocks
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(2)),
+          4
+        );
+
+        console.log("\t-- provide liquidity to vAMM with USDC 10000 --");
+
+        await periphery.mintOrBurn({
+          marginEngine: marginEngineTest.address,
+          tickLower: -TICK_SPACING,
+          tickUpper: TICK_SPACING,
+          notional: toBn("100000", 6),
+          isMint: true,
+          marginDelta: toBn("10000", 6),
+        });
+
+        await logBalances();
+
+        // execute strategy
+        console.log("\n\t-- execute --");
+        await jointVault.execute();
+
+        await logBalances();
+
+        console.log("\n\t-- advance time 5 days --");
+        // fast forward 5 days with four blocks
+        await advanceTimeAndBlock(consts.ONE_DAY.mul(5), 4);
+
+        // settle
+        console.log("\t-- settle --");
+        await jointVault.settle();
+
+        await logBalances();
+
+        console.log("\n\t-- provide liquidity to vAMM with USDC 10000 --");
+
+        await periphery.mintOrBurn({
+          marginEngine: marginEngineTest1.address,
+          tickLower: -TICK_SPACING,
+          tickUpper: TICK_SPACING,
+          notional: toBn("100000", 6),
+          isMint: true,
+          marginDelta: toBn("10000", 6),
+        });
+
+        await logBalances();
 
         // roll funds over into the next round
+        console.log("\n\t-- jointVault set new margin engine --");
+        await jointVault.setMarginEngine(marginEngineTest1.address);
+        await jointVault.setFCM(fcmTest1.address);
 
-        console.log('marginEngineTest', marginEngineTest.address);
-        console.log('marginEngineTest1', marginEngineTest1.address);
+        console.log("\t-- advance time 1 day --");
+        await advanceTimeAndBlock(
+          BigNumber.from(86400).mul(BigNumber.from(1)),
+          4
+        );
+
+        // execute strategy
+        console.log("\t-- execute --");
+        await jointVault.execute();
+
+        await logBalances();
+
+        console.log("\n\t-- advance time 3 days --");
+        // fast forward 5 days with four blocks
+        await advanceTimeAndBlock(consts.ONE_DAY.mul(3), 4);
+
+        // settle
+        console.log("\t-- settle --");
+        await jointVault.settle();
+
+        await logBalances();
+
+        const cRate = await jointVault.cRate();
+
+        const AUSDCToWithdraw = cRate
+          .mul(initialDepositAmount)
+          .div(BigNumber.from(10).pow(30));
+
+        const JVUSDCBalance = await jvUSDC.balanceOf(wallet.address);
+        await jvUSDC.approve(jointVault.address, JVUSDCBalance);
+
+        console.log(
+          "\taUSDCToWithdraw",
+          AUSDCToWithdraw.toString(),
+          "\tcRate",
+          cRate.toString()
+        );
+
+        console.log(
+          `\n\t-- withdraw using ${formatUnits(
+            JVUSDCBalance.toString(),
+            18
+          )} --`
+        );
+        await jointVault.withdraw(initialDepositAmount.mul(1e12));
+
+        await logBalances();
       });
     });
   });

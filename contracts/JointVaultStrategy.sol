@@ -200,6 +200,11 @@ contract JointVaultStrategy is Ownable {
         marginEngine = IMarginEngine(_marginEngine);
     }
 
+    // TODO: Do not require custodian
+    function setFCM(address _fcm) public onlyOwner {
+        fcm = IFCM(_fcm);
+    }
+
     //
     // User functions
     //
