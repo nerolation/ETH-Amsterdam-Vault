@@ -1,6 +1,15 @@
 ## ETH-Amsterdam-Vault
 
+<div align="center">
+
+<img alt="JavaScript" src="https://img.shields.io/badge/-JavaScript-F0DB4F?style=flat-square&logo=javascript&logoColor=black" />
+<img alt="TypeScript" src="https://img.shields.io/badge/-TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white" />
+<img alt="Solidity" src="https://img.shields.io/badge/-Solidity-BAC9F9?style=flat-square&logo=solidity&logoColor=363636" />
+<img alt="Ethereum" src="https://img.shields.io/badge/-Ethereum-3C3C3D?style=flat-square&logo=ethereum&logoColor=white" />
+</div>
+
 ## This is the official repository of join(T)! 
+
 * Using Voltz Protocol, join(T) allows for pooled, tokenized, and continuous IRS positions. Our contracts enable USDC deposits and withdrawals, no Aave downtime, and tradeable fixed rate positions.
 
 ### The tools involved in this project are the following:
