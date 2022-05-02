@@ -42,8 +42,6 @@ For the purpose of seamless collaboration Hardhat, the Kovan test net and Github
 ### How did sponsor tech benefit our project?
 We were able to use the available repositories and testnet contracts for entering into interest rate swap positions and settling our positions. Our project extends potential capabilities, while requiring the Voltz Protocol for most base mechanisms. join(T) wraps a Voltz Protocol position strategy and plugs into the mechanisms to operationalize the risk swap for the tokenized and pooled investment. Using the Full Collateralization Module we avoid risk stemming from undercollateralized risk swap positions and are able to let our user invest USDC and withdraw USDC, while exposing themselves to a larger potential of risk variations realized through specific strategies. 
 
-### Did you do anything “hacky” worth mentioning
-
 ### How were we impressed with our deliverable?
 We managed to integrate with the Voltz Protocol and implement a full lifecycle of a pooled and tokenized risk swap strategy. We were maximizing the time in a yield earning state for users and successfully completed the strategy. 
 We worked through a missing understanding of interest rate swaps and were able to come up with a process that we believe adds additional capabilities to the available strategy space. 
