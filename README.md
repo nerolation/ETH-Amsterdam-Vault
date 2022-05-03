@@ -9,7 +9,7 @@
 </div>
 
 ## This is the official repository of join(T)
-### First Price Winner in the category "Most creative implementation" at the ETHAmsterdam Hachathon 2022! 
+### First Price Winner in the category "Most creative implementation" at the ETHAmsterdam Hackathon 2022! 
 
 * Using Voltz Protocol, join(T) allows for pooled, tokenized, and continuous IRS positions. Our contracts enable USDC deposits and withdrawals, no Aave downtime, and tradeable fixed rate positions.
 
